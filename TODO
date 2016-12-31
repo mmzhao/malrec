@@ -1,0 +1,26 @@
+TODO
+- try to have multiple ip sources
+- multithread
+- scrape reddit for mal users
+- run stats for histogram of completed animes per user
+- make matrices
+- figure out preprocessing
+- run regular SVD for predictions
+- learn/implement advanced recommendation schemes
+
+STAY ON LOOKOUT FOR
+- way to find more users (reddit, scraping anime reviews)
+- better way to scrape lists
+- learn about connection pools
+
+DONE
+- scrape top X most popular anime
+- scrape top X most member clubs
+- scrape users from clubs
+- scrape animelists from users
+- store everything in JSON
+- set up persistant http connections for animelist requests
+- use BeautifulSoup to parse xml instead of using regex
+- catch exceptions
+- use requests package instead of httplib
+- sleep when rate limited (429)
