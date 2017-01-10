@@ -1,17 +1,20 @@
 TODO
-- try to have multiple ip sources
-- multithread
-- scrape reddit for mal users
-- run stats for histogram of completed animes per user
-- make matrices
-- figure out preprocessing
-- run regular SVD for predictions
+- make pipeline for getting list from single user
 - learn/implement advanced recommendation schemes
+- more fully capture implicit feedback by incorporating unscored but watched anime
+- optimize algos
+- refactor everything
+- learn about normalization methods
+- use k-fold cross val
+- graph performance for dif algs
+- timestamp crap for future predictabiltiy
+- consider other loss fns besides rmse
+- scrape more/better
+- multithread
 
 STAY ON LOOKOUT FOR
 - way to find more users (reddit, scraping anime reviews)
 - better way to scrape lists
-- learn about connection pools
 
 DONE
 - scrape top X most popular anime
@@ -24,3 +27,13 @@ DONE
 - catch exceptions
 - use requests package instead of httplib
 - sleep when rate limited (429)
+- try each user up to X times before giving up and recording username
+- try to have multiple ip sources
+- make matrices
+- try dif algos
+	- cosine similarity
+	- basic svd
+	- stochastic gradient descent
+	- alternating least squares
+- scrape reddit for mal users
+- run stats for histogram of completed animes per user

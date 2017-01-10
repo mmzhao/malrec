@@ -138,7 +138,7 @@ def getUsers(infile='users.json'):
 #         users = json.load(f)['usernames']
 #     return users
 
-def scrapeAnimelists(users, num_users, id2anime, outfile='user_animelists.json'):
+def scrapeAnimelists(users, num_users, outfile='user_animelists.json'):
     start = time.time()
     user2animelist = {}
     for i in range(min(num_users, len(users))):
@@ -179,7 +179,7 @@ def scrapeAnimelists(users, num_users, id2anime, outfile='user_animelists.json')
         json.dump(user2animelist, f)
         # json.dump(user2animelist, f, indent=2)
 
-def scrapeAddAnimelists(users, start, end, id2anime, infile='user_animelists.json', outfile='user_animelists.json'):
+def scrapeAddAnimelists(users, start, end, infile='user_animelists.json', outfile='user_animelists.json'):
     with open(infile, 'r') as f:
         user2animelist = json.load(f)
     start_time = time.time()
@@ -221,7 +221,7 @@ def scrapeAddAnimelists(users, start, end, id2anime, infile='user_animelists.jso
         json.dump(user2animelist, f)
         # json.dump(user2animelist, f, indent=2)
 
-def scrapeAnimelistsPersistant(users, num_users, id2anime, outfile='user_animelists.json'):
+def scrapeAnimelistsPersistant(users, num_users, outfile='user_animelists.json'):
     user2animelist = {}
     conn = httplib.HTTPSConnection("myanimelist.net")
     start = time.time()
@@ -260,7 +260,7 @@ def scrapeAnimelistsPersistant(users, num_users, id2anime, outfile='user_animeli
     conn.close()
         # json.dump(user2animelist, f, indent=2)
 
-def scrapeAddAnimelistsPersistant(users, start, end, id2anime, infile='user_animelists.json', outfile='user_animelists.json'):
+def scrapeAddAnimelistsPersistant(users, start, end, infile='user_animelists.json', outfile='user_animelists.json'):
     with open(infile, 'r') as f:
         user2animelist = json.load(f)
     conn = httplib.HTTPSConnection("myanimelist.net")
@@ -303,7 +303,7 @@ def scrapeAddAnimelistsPersistant(users, start, end, id2anime, infile='user_anim
         # json.dump(user2animelist, f, indent=2)
     conn.close()
 
-def scrapeAnimelistsSoup(users, num_users, id2anime, outfile='user_animelists.json'):
+def scrapeAnimelistsSoup(users, num_users, outfile='user_animelists.json'):
     user2animelist = {}
     conn = httplib.HTTPSConnection("myanimelist.net")
     start = time.time()
@@ -345,12 +345,18 @@ def scrapeAnimelistsSoup(users, num_users, id2anime, outfile='user_animelists.js
         json.dump(user2animelist, f)
     conn.close()
 
-def scrapeAddAnimelistsSoup(users, start, end, id2anime, infile='user_animelists.json', outfile='user_animelists.json'):
+def scrapeAddAnimelistsSoup(users, start, end, infile='user_animelists.json', outfile='user_animelists.json'):
     with open(infile, 'r') as f:
         user2animelist = json.load(f)
     conn = httplib.HTTPSConnection("myanimelist.net")
     start_time = time.time()
     for i in range(start, min(end, len(users))):
+        if i%100 == 0 and i != start:
+            with open(outfile, 'w') as f:
+                json.dump(user2animelist, f)
+            print "time spent:", time.time() - start_time
+            print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
+        print i
         try:
             conn.request("GET", "/malappinfo.php?u={}&status=all&type=anime".format(users[i]))
             res = conn.getresponse()
@@ -375,11 +381,6 @@ def scrapeAddAnimelistsSoup(users, start, end, id2anime, infile='user_animelists
                 print "empty animelist:", users[i], i
                 continue
             user2animelist[users[i]] = anime2score
-            if (i + 1)%100 == 0:
-                with open(outfile, 'w') as f:
-                    json.dump(user2animelist, f)
-                print "time spent:", time.time() - start_time
-                print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
         except KeyboardInterrupt:
             print "forced termination"
             return
@@ -389,14 +390,40 @@ def scrapeAddAnimelistsSoup(users, start, end, id2anime, infile='user_animelists
         json.dump(user2animelist, f)
     conn.close()
 
-def scrapeAnimelistsNew(users, num_users, id2anime, outfile='user_animelists.json', tries=3):
+def scrapeAnimelistsNew(users, num_users, proxies=[None], outfile='user_animelists.json', tries=3):
     user2animelist = {}
+    # with open(infile, 'r') as f:
+    #     user2animelist = json.load(f)
+    # with open(failfile, 'r') as f:
+    #     failed_users = set(json.load(f)['failed_users'])
     s = requests.Session()
-    start = time.time()
+    ss = [requests.Session() for i in range(len(proxies))]
+    for i in range(len(proxies)):
+        ss[i].proxies = proxies[i]
+    pindex = 0
+    failed = 0
+    start_time = time.time()
     for i in range(min(num_users, len(users))):
+        if i%100 == 0 and i != 0:
+            with open(outfile, 'w') as f:
+                json.dump(user2animelist, f)
+            # fobj = {}
+            # fobj['failed_users'] = list(failed_users)
+            # with open(failfile, 'w') as f:
+            #     json.dump(fobj, f)
+            print "time spent:", time.time() - start_time
+            print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i, len(user2animelist), users[i])
+            # print "failed:", len(failed_users)
+            print "failed:", failed
         for _ in range(tries):
+            print i, users[i], _, proxies[pindex]
+            # time.sleep(.5)
             try:
-                res = s.get("https://myanimelist.net/malappinfo.php?u={}&status=all&type=anime".format(users[i]))
+                res = s.get("https://myanimelist.net/malappinfo.php?u={}&status=all&type=anime".format(users[i]), proxies=proxies[pindex])
+                cur_pindex = pindex
+                pindex = (pindex + 1) % len(proxies)
+                # res = ss[cur_pindex].get("https://myanimelist.net/malappinfo.php?u={}&status=all&type=anime".format(users[i]))
+                # print "got xml"
                 if res.status_code != 200:
                     raise Exception("failed request on user:", users[i], i, "status: {0}".format(res.status_code))
                 xml = res.text
@@ -415,34 +442,59 @@ def scrapeAnimelistsNew(users, num_users, id2anime, outfile='user_animelists.jso
                     print "empty animelist:", users[i], i
                     break
                 user2animelist[users[i]] = anime2score
-                if (i + 1)%100 == 0:
-                    with open(outfile, 'w') as f:
-                        json.dump(user2animelist, f)
-                    print "time spent:", time.time() - start_time
-                    print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
                 break
             except KeyboardInterrupt:
                 print "forced termination"
                 return
             except Exception as e:
-                print "exception on user:", users[i], i
+                print "exception on user:", users[i], i, proxies[cur_pindex]
                 print e
-                time.sleep(1)
+                if _ == tries - 1:
+                    # failed_users.add(users[i])
+                    print "RIP IN PIECES"
+                    failed += 1
+                time.sleep(2**(_+1))
                 continue
     with open(outfile, 'w') as f:
         json.dump(user2animelist, f)
+    print "time spent:", time.time() - start_time
+    print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
+    print "failed:", failed
+    s.close()
 
-def scrapeAddAnimelistsNew(users, start, end, id2anime, infile='user_animelists.json', outfile='user_animelists.json', tries=3):
+def scrapeAddAnimelistsNew(users, start, end, proxies=[None], infile='user_animelists.json', outfile='user_animelists.json', tries=3):
     with open(infile, 'r') as f:
         user2animelist = json.load(f)
-    s = requests.Session()
+    # with open(failfile, 'r') as f:
+    #     failed_users = set(json.load(f)['failed_users'])
+    # s = requests.Session()
+    ss = [requests.Session() for i in range(len(proxies))]
+    for i in range(len(proxies)):
+        ss[i].proxies = proxies[i]
+    pindex = 0
+    failed = 0
     start_time = time.time()
     for i in range(start, min(end, len(users))):
+        if i%100 == 0 and i != start:
+            with open(outfile, 'w') as f:
+                json.dump(user2animelist, f)
+            # fobj = {}
+            # fobj['failed_users'] = list(failed_users)
+            # with open(failfile, 'w') as f:
+            #     json.dump(fobj, f)
+            print "time spent:", time.time() - start_time
+            print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i, len(user2animelist), users[i])
+            # print "failed:", len(failed_users)
+            print "failed:", failed
         for _ in range(tries):
-            print _
-            time.sleep(.5)
+            print i, users[i], _, proxies[pindex]
+            # time.sleep(.5)
             try:
-                res = s.get("https://myanimelist.net/malappinfo.php?u={}&status=all&type=anime".format(users[i]))
+                # res = s.get("https://myanimelist.net/malappinfo.php?u={}&status=all&type=anime".format(users[i]), proxies=proxies[pindex])
+                cur_pindex = pindex
+                pindex = (pindex + 1) % len(proxies)
+                res = ss[cur_pindex].get("https://myanimelist.net/malappinfo.php?u={}&status=all&type=anime".format(users[i]))
+                # print "got xml"
                 if res.status_code != 200:
                     raise Exception("failed request on user:", users[i], i, "status: {0}".format(res.status_code))
                 xml = res.text
@@ -461,82 +513,69 @@ def scrapeAddAnimelistsNew(users, start, end, id2anime, infile='user_animelists.
                     print "empty animelist:", users[i], i
                     break
                 user2animelist[users[i]] = anime2score
-                if (i + 1)%100 == 0:
-                    with open(outfile, 'w') as f:
-                        json.dump(user2animelist, f)
-                    print "time spent:", time.time() - start_time
-                    print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
                 break
             except KeyboardInterrupt:
                 print "forced termination"
                 return
             except Exception as e:
-                print "exception on user:", users[i], i
+                print "exception on user:", users[i], i, proxies[cur_pindex]
                 print e
-                time.sleep(1)
+                if _ == tries - 1:
+                    # failed_users.add(users[i])
+                    print "RIP IN PIECES"
+                    failed += 1
+                time.sleep(2**(_+1))
                 continue
     with open(outfile, 'w') as f:
         json.dump(user2animelist, f)
+    print "time spent:", time.time() - start_time
+    print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
+    print "failed:", failed
+    s.close()
 
 def getAnimelists(infile='user_animelists.json'):
     with open(infile, 'r') as f:
         user2animelist = json.load(f)
     return user2animelist
 
-def makeArrays():
-    user_anime_sorted = anime2score.keys()
-    user_anime_sorted.sort()
-    all_anime_sorted = id2anime.keys()
-    full_scores = []
-    user_index = 0
-    all_index = 0
-    scores_1000 = 0
-    while user_index < len(user_anime_sorted) and all_index < len(all_anime_sorted):
-        # print user_index, all_index, user_anime_sorted[user_index], all_anime_sorted[all_index]
-        if user_anime_sorted[user_index] == all_anime_sorted[all_index]:
-            full_scores += [anime2score[user_anime_sorted[user_index]]]
-            user_index += 1
-            all_index += 1
-            scores_1000 += 1
-        elif user_anime_sorted[user_index] not in all_anime_sorted:
-            # print 'anime not in top 1000 most popular:', user_anime_sorted[user_index] #, id2anime[user_anime_sorted[user_index]]
-            user_index += 1
-        else: # user_anime_sorted[user_index] > all_anime_sorted[all_index]:
-            full_scores += [0]
-            all_index += 1
-    full_scores += [0 for i in range(len(all_anime_sorted) - len(full_scores))]
-    print 'scores in top 1000 most popular:', scores_1000
-
-
-
-# scrapeId2AnimeDict(1000)
-# scrapeClubs(100)
-
-# clubs = getClubs()
-# scrapeUsers(clubs, 3)
-# scrapeAddUsers(clubs, 3, 98)
-
-id2anime = getId2AnimeDictSorted()
-users = getUsers('users_club.json')
-# print len(users)
-
-# scrapeAnimelistsNew(['Ploebian'], 1, id2anime, outfile="wat")
-# scrapeAddAnimelistsNew(users, 13500, 100000, id2anime, infile='user_animelists_club_first_half.json', outfile='user_animelists_club_first_half.json')
-# scrapeAddAnimelistsNew(users, 100200, 200000, id2anime, infile='user_animelists_club_10000.json', outfile='user_animelists_club_second_half.json')
-cProfile.run('scrapeAddAnimelistsNew(users, 100100, 100200, id2anime, infile="user_animelists_club_10000.json", outfile="user_animelists_club_second_half.json")', sort='tottime')
 
 
 
 
+if __name__ == "__main__":
+    # scrapeId2AnimeDict(1000)
+    # scrapeClubs(100)
+
+    # clubs = getClubs()
+    # scrapeUsers(clubs, 3)
+    # scrapeAddUsers(clubs, 3, 98)
 
 
+    # id2anime = getId2AnimeDictSorted()
+    users = getUsers('users_club.json')
+    proxies = [ 
+                # {"https": "https://216.68.76.27:80"},
+                {"https": "https://45.76.0.205:8080"},
+                {"https": "https://67.97.220.180:10000"},
+                {"https": "https://70.248.28.23:800"},
+                {"https": "https://97.77.104.22:3128"},
+                {"https": "https://108.166.171.198:80"},
+                {"https": "https://216.68.76.12:80"},
+                {"https": "https://35.164.243.195:80"},
+                None
+                 ]
+    # proxies = [ {"https": "https://35.164.243.195:80"}, ]
 
 
+    # print len(users)
 
-
-
-
-
+    scrapeAnimelistsNew(['Ploebian'], 1, outfile="ploebian_animelist.json")
+    # scrapeAddAnimelistsNew(users, 41200, 100000, proxies=proxies, infile='user_animelists_club_first_half.json', outfile='user_animelists_club_first_half.json')
+    # scrapeAddAnimelistsNew(users, 109900, 200000, proxies=proxies, infile='user_animelists_club_second_half.json', outfile='user_animelists_club_second_half.json')
+    # scrapeAddAnimelistsSoup(users, 41200, 100000, infile='user_animelists_club_first_half.json', outfile='user_animelists_club_first_half.json')
+    # scrapeAddAnimelistsSoup(users, 109900, 200000, infile='user_animelists_club_second_half.json', outfile='user_animelists_club_second_half.json')
+    # cProfile.run('scrapeAddAnimelistsNew(users, 100200, 100300, proxies=proxies, infile="user_animelists_club_10000.json", outfile="user_animelists_club_second_half.json")', sort='tottime')
+    # cProfile.run('scrapeAddAnimelistsSoup(users, 100200, 100300, infile="user_animelists_club_10000.json", outfile="user_animelists_club_second_half.json")', sort='tottime')
 
 
 
