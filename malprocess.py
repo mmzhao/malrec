@@ -1,3 +1,4 @@
+# MODEL BASED COLLABORATIVE FILTERING ANIME RECOMMENDATION SYSTEM
 import collections
 import json
 import malscrape
@@ -107,18 +108,245 @@ def recommend(score_array, user_array, id2anime):
     # als_test(train_X, test_X, id2anime)
     # svd_plus2_simplified_test(train_X, test_X, id2anime)
     svd_plus2_test(train_X, test_X, id2anime)
+    # asymmetric_svd_test(train_X, test_X, id2anime)
 
-def svd_plus2_test(train_X, test_X, id2anime):
+def asymmetric_svd_test(train_X, test_X, id2anime):
 
-    def rmse(Im,R,mu,Bu,Bi,Q,P,Y,I,N):
+    def rmse(Im,R,mu,Bu,Bi,Q,W,C,Iu,N):
         # inefficient
         return np.sqrt(np.sum((Im * (R - predict_all(mu,Bu,Bi,P,Q,Y,I,N)))**2)/len(R[R > 0]))
 
-    def rmse_train(Im,R,mu,Bu,Bi,Q,P,Y,I,N):
+    def rmse_train(Im,R,mu,Bu,Bi,Q,W,C,Iu,N):
         return np.sqrt(sq_error_train(R,mu,Bu,Bi,P,Q,Y,I,N)/len(R[R > 0]))
         # b = np.sqrt(np.sum((Im * (R - predict_train(P,Q,Y,I,N)))**2)/len(R[R > 0]))
 
-    def rmse_test(Im,R,mu,Bu,Bi,Q,P,Y,I,N):
+    def rmse_test(Im,R,mu,Bu,Bi,Q,W,C,Iu,N):
+        return np.sqrt(sq_error_test(R,mu,Bu,Bi,P,Q,Y,I,N)/len(R[R > 0]))
+        # return np.sqrt(np.sum((Im * (R - predict_test(P,Q,Y,I,N)))**2)/len(R[R > 0]))
+
+    def predict_single(mu,Bu,Bi,Q,W,C,Iu,N):
+        # if N:
+        return mu + Bu + Bi + np.dot(Q, N**-.5 * (np.dot(W.T, base_offsets) + np.dot(C.T, Iu)))
+        # return np.dot(Q, P)
+
+    def predict_all(mu,Bu,Bi,Q,W,C,Iu,N):
+        pred = np.zeros(train_X.shape)
+        for u in range(m):
+            for i in range(n):
+                pred[u, i] = predict_single(mu,Bu[u],Bi[i],P[u],Q[i],Y,I[u],N[u])
+        return pred
+
+    def predict_train(mu,Bu,Bi,Q,W,C,Iu,N):
+        pred = np.zeros(train_X.shape)
+        for u, i in zip(users,items):
+            pred[u, i] = predict_single(mu,Bu[u],Bi[i],P[u],Q[i],Y,I[u],N[u])
+        return pred
+
+    def predict_test(mu,Bu,Bi,Q,W,C,Iu,N):
+        pred = np.zeros(train_X.shape)
+        for u, i in zip(users_test,items_test):
+            pred[u, i] = predict_single(mu,Bu[u],Bi[i],P[u],Q[i],Y,I[u],N[u])
+        return pred
+
+    def sq_error_train(R,mu,Bu,Bi,Q,W,C,Iu,N):
+        # cur = time.time()
+        sq_err = 0
+        for u, i in zip(users,items):
+            sq_err += (R[u, i] - predict_single(mu,Bu[u],Bi[i],P[u],Q[i],Y,I[u],N[u]))**2
+        # print "inb4", time.time() - cur
+        return sq_err
+
+    def sq_error_test(R,mu,Bu,Bi,Q,W,C,Iu,N):
+        sq_err = 0
+        for u, i in zip(users_test,items_test):
+            sq_err += (R[u, i] - predict_single(mu,Bu[u],Bi[i],P[u],Q[i],Y,I[u],N[u]))**2
+        return sq_err
+
+    print "starting asymmetric svd test"
+
+    m, n = train_X.shape  # Number of users and items
+
+    #Only consider non-zero matrix 
+    users,items = train_X.nonzero()
+    users_test,items_test = test_X.nonzero()
+    user_item_pairs = zip(users,items)
+
+    mu = np.sum(train_X) / len(user_item_pairs) # total mean of all scores
+    # try initializing with dif between user/anime mean and total mean
+    Bu = 1 * np.random.rand(m) # user biases
+    Bi = 1 * np.random.rand(n) # anime biases
+
+    I = train_X.copy()
+    I[I > 0] = 1
+    I[I == 0] = 0
+
+    N = np.sum(train_X, axis=1)
+    N[N == 0] = 1 #debatable, either need this or put ifs back
+
+    I2 = test_X.copy()
+    I2[I2 > 0] = 1
+    I2[I2 == 0] = 0
+
+    # closest test/train error is (gamma1=.020,gamma2=.002,gammaX=.97)
+    #                             (gamma1=.020,gamma2=.002,gammaX=.97,lmbda1=.050,lmbda2=.050)
+    lmbda1 = 0.050 # Regularization weight for Bu,Bi
+    lmbda2 = 0.050 # Regularization weight for P/Q/Y
+    gamma1=0.008  # Learning rate for Bu/Bi 
+    gamma2=0.002  # Learning rate for P/Q/Y
+    gammaX = .97 # Try other learning rate adaptation methods (bold driver, annealing, search-then-converge)
+    g1 = gamma1 # Later for the graph
+    g2 = gamma2 # Later for the graph
+    k = 20  # Dimensionality of the latent feature space
+    n_epochs = 30  # Number of epochs
+
+    Q = .1 * np.random.rand(n,k) # Latent movie feature matrix
+    W = .1 * np.random.rand(n,k) # Baseline offset weights
+    C = .1 * np.random.rand(n,k) # Implicit baseline offset weights
+
+    train_errors = []
+    test_errors = []
+
+    # cur = time.time()
+    # a = rmse_train(I,train_X,P,Q,Y,I,N) # Calculate root mean squared error from train dataset
+    # print "train time:", time.time() - cur, a
+    # b = rmse_test(I2,test_X,P,Q,Y,I,N) # Calculate root mean squared error from test dataset
+    # print "test time:", time.time() - cur, b
+    # exit(1)
+
+    time0 = 0
+    time1 = 0
+    time2 = 0
+    time3 = 0
+    time4 = 0
+
+    start_time = time.time()
+
+    train_rmse = rmse_train(I,train_X,mu,Bu,Bi,P,Q,Y,I,N) # Calculate root mean squared error from train dataset
+    # print time.time() - cur
+    test_rmse = rmse_test(I2,test_X,mu,Bu,Bi,P,Q,Y,I,N) # Calculate root mean squared error from test dataset
+    # print time.time() - cur
+    # train_errors.append(train_rmse)
+    # test_errors.append(test_rmse)
+    print "[Epoch %d/%d, time %f] train error: %f, test error: %f" \
+    %(0, n_epochs, 0, train_rmse, test_rmse)
+
+    min_rmse = test_rmse
+        
+    for epoch in xrange(n_epochs):
+        count = 0
+        for u, i in user_item_pairs:
+
+            # cur = time.time()
+
+            # pred_train = predict_train(P,Q,Y,I,N)
+
+            # time0 += time.time() - cur
+
+            count += 1
+            if count % 100000 == 0:
+                print "count-time:{0}-{1}".format(count, time.time() - start_time)
+                # train_rmse = rmse_train(I,train_X,mu,Bu,Bi,P,Q,Y,I,N) # Calculate root mean squared error from train dataset
+                # test_rmse = rmse_test(I2,test_X,mu,Bu,Bi,P,Q,Y,I,N) # Calculate root mean squared error from test dataset
+                # print "train rmse:", train_rmse
+                # print "test rmse:", test_rmse
+                # print "    time0:{}".format(time0)
+                # print "    time1:{}".format(time1)
+                # print "    time2:{}".format(time2)
+                # print "    time3:{}".format(time3)
+                # print "    time4:{}".format(time4)
+            # cur = time.time()
+
+            # e = train_X[u, i] - pred_train[u, i]  # Calculate error for gradient
+            e = train_X[u, i] - predict_single(mu,Bu[u],Bi[i],P[u],Q[i],Y,I[u],N[u])  # Calculate error for gradient
+            
+            # time0 += time.time() - cur
+            # cur = time.time()
+
+            Bu[u] += gamma1 * (e - lmbda1 * Bu[u])
+            Bu[i] += gamma1 * (e - lmbda1 * Bu[i])
+
+            # time1 += time.time() - cur
+            # cur = time.time()
+            
+            # if N[u]:
+            Q[i] += gamma2 * (e * (P[u] + N[u]**-.5 * np.dot(Y.T, I[u])) - lmbda2 * Q[i])  # Update latent movie feature matrix
+            # else:
+                # Q[i] += gamma * (e * (P[u] + np.dot(Y.T, I[u])) - lmbda * Q[i])  # Update latent movie feature matrix
+            
+            # time2 += time.time() - cur
+            # cur = time.time()
+
+            P[u] += gamma2 * (e * Q[i] - lmbda2 * P[u]) # Update latent user feature matrix
+            
+            # time3 += time.time() - cur
+            # cur = time.time()
+
+            # this literally optimized runtime by 1000x
+            Nu = train_X[u].nonzero()[0]
+            Y[Nu] *= (1 - gamma2 * lmbda2)
+            # if N[u]:
+            Yd = gamma2 * (e * N[u]**-.5 * Q[i])
+            # else:
+                # Yd = gamma * (e * Q[i])
+            np.add(Y[Nu], Yd)
+            # for j in train_X[u].nonzero()[0]:
+                # Y[j] += gamma * (e * N[u]**-.5 * Q[i] - lmbda * Y[j])
+
+            # time4 += time.time() - cur
+
+            # print sum(sum(P))
+            # print sum(sum(Q))
+        # cur = time.time()
+        train_rmse = rmse_train(I,train_X,mu,Bu,Bi,P,Q,Y,I,N) # Calculate root mean squared error from train dataset
+        # print time.time() - cur
+        test_rmse = rmse_test(I2,test_X,mu,Bu,Bi,P,Q,Y,I,N) # Calculate root mean squared error from test dataset
+        # print time.time() - cur
+        train_errors.append(train_rmse)
+        test_errors.append(test_rmse)
+        print "[Epoch %d/%d, time %f] train error: %f, test error: %f" \
+        %(epoch+1, n_epochs, time.time() - start_time, train_rmse, test_rmse)
+        # decrease learning rate
+        gamma1 *= gammaX
+        gamma2 *= gammaX
+
+        min_rmse = min(min_rmse, test_rmse)
+    # R = pd.DataFrame(train_X)
+    # R_hat=pd.DataFrame(sgd_wr_predict(P,Q))
+    # ratings = pd.DataFrame(data=R.loc[0,R.loc[0,:] > 0]).head(n=10)
+    # ratings['Prediction'] = R_hat.loc[0,R.loc[0,:] > 0]
+    # ratings.columns = ['Actual Rating', 'Predicted Rating']
+    # print ratings
+
+    print "recommended anime:"
+    pred = predict_all(mu,Bu,Bi,P,Q,Y,I,N)
+    count = 0
+    for i in np.argsort(pred[0])[::-1][:len(pred[0])]:
+        count += 1
+        print id2anime.items()[i], pred[0][i]
+        if count == 100:
+            break
+
+    plt.plot(range(len(train_errors)), train_errors, marker='o', label='Training Data');
+    plt.plot(range(len(test_errors)), test_errors, marker='v', label='Test Data');
+    plt.title('Asymmetric SVD Learning Curve (min_rmse={0},k={1},gmma={2},lmbda={3})'.format(min_rmse,k,(g1,g2,gammaX),(lmbda1,lmbda2)))
+    plt.xlabel('Number of Epochs');
+    plt.ylabel('RMSE');
+    plt.legend()
+    plt.grid()
+    plt.show()
+    print '--------------------------------------\n'
+
+def svd_plus2_test(train_X, test_X, id2anime):
+
+    def rmse(Im,R,mu,Bu,Bi,P,Q,Y,I,N):
+        # inefficient
+        return np.sqrt(np.sum((Im * (R - predict_all(mu,Bu,Bi,P,Q,Y,I,N)))**2)/len(R[R > 0]))
+
+    def rmse_train(Im,R,mu,Bu,Bi,P,Q,Y,I,N):
+        return np.sqrt(sq_error_train(R,mu,Bu,Bi,P,Q,Y,I,N)/len(R[R > 0]))
+        # b = np.sqrt(np.sum((Im * (R - predict_train(P,Q,Y,I,N)))**2)/len(R[R > 0]))
+
+    def rmse_test(Im,R,mu,Bu,Bi,P,Q,Y,I,N):
         return np.sqrt(sq_error_test(R,mu,Bu,Bi,P,Q,Y,I,N)/len(R[R > 0]))
         # return np.sqrt(np.sum((Im * (R - predict_test(P,Q,Y,I,N)))**2)/len(R[R > 0]))
 
@@ -171,8 +399,8 @@ def svd_plus2_test(train_X, test_X, id2anime):
 
     mu = np.sum(train_X) / len(user_item_pairs) # total mean of all scores
     # try initializing with dif between user/anime mean and total mean
-    Bu = 2 * np.random.rand(m) # user biases
-    Bi = 2 * np.random.rand(n) # anime biases
+    Bu = 1 * np.random.rand(m) # user biases
+    Bi = 1 * np.random.rand(n) # anime biases
 
     I = train_X.copy()
     I[I > 0] = 1
@@ -185,24 +413,29 @@ def svd_plus2_test(train_X, test_X, id2anime):
     I2[I2 > 0] = 1
     I2[I2 == 0] = 0
 
-    lmbda1 = 0.01 # Regularization weight for Bu,Bi
-    lmbda2 = 0.01 # Regularization weight for P/Q/Y
-    gamma1=0.002  # Learning rate for Bu/Bi
-    gamma2=0.004  # Learning rate for P/Q/Y
+    # closest test/train error is (gamma1=.007,gamma2=.002,gammaX=.97)
+    #                             (gamma1=.007,gamma2=.002,gammaX=.97,lmbda1=.050,lmbda2=.050)
+    lmbda1 = 0.050 # Regularization weight for Bu,Bi
+    lmbda2 = 0.050 # Regularization weight for P/Q/Y
+    gamma1=0.007  # Learning rate for Bu/Bi 
+    gamma2=0.003  # Learning rate for P/Q/Y
+    gammaX = .97 # Try other learning rate adaptation methods (bold driver, annealing, search-then-converge)
+    g1 = gamma1 # Later for the graph
+    g2 = gamma2 # Later for the graph
     k = 20  # Dimensionality of the latent feature space
-    n_epochs = 10  # Number of epochs
+    n_epochs = 200  # Number of epochs
 
-    P = 1 * np.random.rand(m,k) # Latent user feature matrix
-    Q = 1 * np.random.rand(n,k) # Latent movie feature matrix
+    P = .1 * np.random.rand(m,k) # Latent user feature matrix
+    Q = .1 * np.random.rand(n,k) # Latent movie feature matrix
     Y = .1 * np.random.rand(n,k) # Implicit feedback feature matrix
 
     train_errors = []
     test_errors = []
 
     # cur = time.time()
-    # a = rmse_train(I,train_X,Q,P,Y,I,N) # Calculate root mean squared error from train dataset
+    # a = rmse_train(I,train_X,P,Q,Y,I,N) # Calculate root mean squared error from train dataset
     # print "train time:", time.time() - cur, a
-    # b = rmse_test(I2,test_X,Q,P,Y,I,N) # Calculate root mean squared error from test dataset
+    # b = rmse_test(I2,test_X,P,Q,Y,I,N) # Calculate root mean squared error from test dataset
     # print "test time:", time.time() - cur, b
     # exit(1)
 
@@ -211,8 +444,20 @@ def svd_plus2_test(train_X, test_X, id2anime):
     time2 = 0
     time3 = 0
     time4 = 0
-    # print len(zip(users,items))
+
     start_time = time.time()
+
+    train_rmse = rmse_train(I,train_X,mu,Bu,Bi,P,Q,Y,I,N) # Calculate root mean squared error from train dataset
+    # print time.time() - cur
+    test_rmse = rmse_test(I2,test_X,mu,Bu,Bi,P,Q,Y,I,N) # Calculate root mean squared error from test dataset
+    # print time.time() - cur
+    # train_errors.append(train_rmse)
+    # test_errors.append(test_rmse)
+    print "[Epoch %d/%d, time %f] train error: %f, test error: %f" \
+    %(0, n_epochs, 0, train_rmse, test_rmse)
+
+    min_rmse = test_rmse
+        
     for epoch in xrange(n_epochs):
         count = 0
         for u, i in user_item_pairs:
@@ -226,8 +471,8 @@ def svd_plus2_test(train_X, test_X, id2anime):
             count += 1
             if count % 100000 == 0:
                 print "count-time:{0}-{1}".format(count, time.time() - start_time)
-                # train_rmse = rmse_train(I,train_X,mu,Bu,Bi,Q,P,Y,I,N) # Calculate root mean squared error from train dataset
-                # test_rmse = rmse_test(I2,test_X,mu,Bu,Bi,Q,P,Y,I,N) # Calculate root mean squared error from test dataset
+                # train_rmse = rmse_train(I,train_X,mu,Bu,Bi,P,Q,Y,I,N) # Calculate root mean squared error from train dataset
+                # test_rmse = rmse_test(I2,test_X,mu,Bu,Bi,P,Q,Y,I,N) # Calculate root mean squared error from test dataset
                 # print "train rmse:", train_rmse
                 # print "test rmse:", test_rmse
                 # print "    time0:{}".format(time0)
@@ -278,17 +523,19 @@ def svd_plus2_test(train_X, test_X, id2anime):
             # print sum(sum(P))
             # print sum(sum(Q))
         # cur = time.time()
-        train_rmse = rmse_train(I,train_X,mu,Bu,Bi,Q,P,Y,I,N) # Calculate root mean squared error from train dataset
+        train_rmse = rmse_train(I,train_X,mu,Bu,Bi,P,Q,Y,I,N) # Calculate root mean squared error from train dataset
         # print time.time() - cur
-        test_rmse = rmse_test(I2,test_X,mu,Bu,Bi,Q,P,Y,I,N) # Calculate root mean squared error from test dataset
+        test_rmse = rmse_test(I2,test_X,mu,Bu,Bi,P,Q,Y,I,N) # Calculate root mean squared error from test dataset
         # print time.time() - cur
         train_errors.append(train_rmse)
         test_errors.append(test_rmse)
         print "[Epoch %d/%d, time %f] train error: %f, test error: %f" \
         %(epoch+1, n_epochs, time.time() - start_time, train_rmse, test_rmse)
         # decrease learning rate
-        gamma1 *= .95
-        gamma2 *= .95
+        gamma1 *= gammaX
+        gamma2 *= gammaX
+
+        min_rmse = min(min_rmse, test_rmse)
     # R = pd.DataFrame(train_X)
     # R_hat=pd.DataFrame(sgd_wr_predict(P,Q))
     # ratings = pd.DataFrame(data=R.loc[0,R.loc[0,:] > 0]).head(n=10)
@@ -305,9 +552,9 @@ def svd_plus2_test(train_X, test_X, id2anime):
         if count == 100:
             break
 
-    plt.plot(range(n_epochs), train_errors, marker='o', label='Training Data');
-    plt.plot(range(n_epochs), test_errors, marker='v', label='Test Data');
-    plt.title('SVD++ Learning Curve')
+    plt.plot(range(len(train_errors)), train_errors, marker='o', label='Training Data');
+    plt.plot(range(len(test_errors)), test_errors, marker='v', label='Test Data');
+    plt.title('SVD++ Learning Curve (min_rmse={0},k={1},gmma={2},lmbda={3})'.format(min_rmse,k,(g1,g2,gammaX),(lmbda1,lmbda2)))
     plt.xlabel('Number of Epochs');
     plt.ylabel('RMSE');
     plt.legend()
@@ -318,15 +565,15 @@ def svd_plus2_test(train_X, test_X, id2anime):
 def svd_plus2_simplified_test(train_X, test_X, id2anime):
     # https://mahout.apache.org/users/recommender/matrix-factorization.html
 
-    def rmse(Im,R,Q,P,Y,I,N):
+    def rmse(Im,R,P,Q,Y,I,N):
         # inefficient
         return np.sqrt(np.sum((Im * (R - predict_all(P,Q,Y,I,N)))**2)/len(R[R > 0]))
 
-    def rmse_train(Im,R,Q,P,Y,I,N):
+    def rmse_train(Im,R,P,Q,Y,I,N):
         return np.sqrt(sq_error_train(R,P,Q,Y,I,N)/len(R[R > 0]))
         # b = np.sqrt(np.sum((Im * (R - predict_train(P,Q,Y,I,N)))**2)/len(R[R > 0]))
 
-    def rmse_test(Im,R,Q,P,Y,I,N):
+    def rmse_test(Im,R,P,Q,Y,I,N):
         return np.sqrt(sq_error_test(R,P,Q,Y,I,N)/len(R[R > 0]))
         # return np.sqrt(np.sum((Im * (R - predict_test(P,Q,Y,I,N)))**2)/len(R[R > 0]))
 
@@ -400,9 +647,9 @@ def svd_plus2_simplified_test(train_X, test_X, id2anime):
     test_errors = []
 
     # cur = time.time()
-    # a = rmse_train(I,train_X,Q,P,Y,I,N) # Calculate root mean squared error from train dataset
+    # a = rmse_train(I,train_X,P,Q,Y,I,N) # Calculate root mean squared error from train dataset
     # print "train time:", time.time() - cur, a
-    # b = rmse_test(I2,test_X,Q,P,Y,I,N) # Calculate root mean squared error from test dataset
+    # b = rmse_test(I2,test_X,P,Q,Y,I,N) # Calculate root mean squared error from test dataset
     # print "test time:", time.time() - cur, b
     # exit(1)
 
@@ -426,8 +673,8 @@ def svd_plus2_simplified_test(train_X, test_X, id2anime):
             # count += 1
             # if count % 100000 == 0:
                 # print "count-time:{0}-{1}".format(count, time.time() - start_time)
-                # train_rmse = rmse_train(I,train_X,Q,P,Y,I,N) # Calculate root mean squared error from train dataset
-                # test_rmse = rmse_test(I2,test_X,Q,P,Y,I,N) # Calculate root mean squared error from test dataset
+                # train_rmse = rmse_train(I,train_X,P,Q,Y,I,N) # Calculate root mean squared error from train dataset
+                # test_rmse = rmse_test(I2,test_X,P,Q,Y,I,N) # Calculate root mean squared error from test dataset
                 # print "train rmse:", train_rmse
                 # print "test rmse:", test_rmse
                 # print "    time1:{}".format(time1)
@@ -471,9 +718,9 @@ def svd_plus2_simplified_test(train_X, test_X, id2anime):
             # print sum(sum(P))
             # print sum(sum(Q))
         # cur = time.time()
-        train_rmse = rmse_train(I,train_X,Q,P,Y,I,N) # Calculate root mean squared error from train dataset
+        train_rmse = rmse_train(I,train_X,P,Q,Y,I,N) # Calculate root mean squared error from train dataset
         # print time.time() - cur
-        test_rmse = rmse_test(I2,test_X,Q,P,Y,I,N) # Calculate root mean squared error from test dataset
+        test_rmse = rmse_test(I2,test_X,P,Q,Y,I,N) # Calculate root mean squared error from test dataset
         # print time.time() - cur
         train_errors.append(train_rmse)
         test_errors.append(test_rmse)
@@ -509,7 +756,7 @@ def svd_plus2_simplified_test(train_X, test_X, id2anime):
 
 def als_test(train_X, test_X, id2anime):
     # alternating least squares
-    def als_rmse(I,R,Q,P):
+    def als_rmse(I,R,P,Q):
         return np.sqrt(np.sum((I * (R - als_predict(P,Q)))**2)/len(R[R > 0]))
 
     def als_predict(P,Q):
@@ -563,8 +810,8 @@ def als_test(train_X, test_X, id2anime):
             Vj = np.dot(P, np.dot(np.diag(Ij), train_X[:,j]))
             Q[:,j] = np.linalg.solve(Aj,Vj)
         
-        train_rmse = als_rmse(I,train_X,Q,P)
-        test_rmse = als_rmse(I2,test_X,Q,P)
+        train_rmse = als_rmse(I,train_X,P,Q)
+        test_rmse = als_rmse(I2,test_X,P,Q)
         train_errors.append(train_rmse)
         test_errors.append(test_rmse)
         
@@ -601,7 +848,7 @@ def als_test(train_X, test_X, id2anime):
 
 def sgd_wr_test(train_X, test_X, id2anime):
     # stochastic gradient descent with weighted lambda regularisation
-    def sgd_rmse(I,R,Q,P):
+    def sgd_rmse(I,R,P,Q):
         # print P
         # print Q
         # print sgd_wr_predict(P,Q)
@@ -648,8 +895,8 @@ def sgd_wr_test(train_X, test_X, id2anime):
             Q[:,i] += gamma * ( e * P[:,u] - lmbda * Q[:,i])  # Update latent movie feature matrix
             # print sum(sum(P))
             # print sum(sum(Q))
-        train_rmse = sgd_rmse(I,train_X,Q,P) # Calculate root mean squared error from train dataset
-        test_rmse = sgd_rmse(I2,test_X,Q,P) # Calculate root mean squared error from test dataset
+        train_rmse = sgd_rmse(I,train_X,P,Q) # Calculate root mean squared error from train dataset
+        test_rmse = sgd_rmse(I2,test_X,P,Q) # Calculate root mean squared error from test dataset
         train_errors.append(train_rmse)
         test_errors.append(test_rmse)
         print "[Epoch %d/%d, time %f] train error: %f, test error: %f" \
@@ -689,7 +936,7 @@ def svd_test(train_X, test_X, id2anime):
     u, s, vt = sparse.linalg.svds(train_X, k=k)
     S_diag=np.diag(s)
     pred = np.dot(np.dot(u, S_diag), vt)
-    print 'User-based CF RMSE: ' + str(rmse(pred, test_X))
+    print 'SVD RMSE: ' + str(rmse(pred, test_X))
     # print "recommended anime:"
     # count = 0
     # for i in np.argsort(pred[0])[::-1][:len(pred[0])]:
