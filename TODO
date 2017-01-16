@@ -1,12 +1,9 @@
 TODO
-- make pipeline for getting list from single user
-- learn/implement advanced recommendation schemes
+- try different annealing schedule (learning rate adaptation)
+- online support for adding users to model
 - more fully capture implicit feedback by incorporating unscored but watched anime
-- optimize algos
-- refactor everything
 - learn about normalization methods
 - use k-fold cross val
-- graph performance for dif algs
 - timestamp crap for future predictabiltiy
 - consider other loss fns besides rmse
 - scrape more/better
@@ -28,19 +25,29 @@ DONE
 - use requests package instead of httplib
 - sleep when rate limited (429)
 - try each user up to X times before giving up and recording username
-- try to have multiple ip sources
+- try to have multiple ip sources with proxies
 - make matrices
-- try dif algos
+- try dif algos (and optimize)
 	- cosine similarity
 	- basic svd
 	- stochastic gradient descent
 	- alternating least squares
+	- svd++
+	- asymmetric svd
 - scrape reddit for mal users
-- run stats for histogram of completed animes per user
+- run stats for histogram of animes-per-user/users-per-anime
+- graph performance for dif algs with different params
+- added performance metric based on threshold allowed prediction error
+- make pipeline for getting list from single user
+- refactor everything - based on a base model class
 
 BOOK PAGES
 - 149 - calculating baseline predictors
 - 154 - how to use rated vs seen vs plan to watch etc
+
+95-PAGE GUIDE PAGES
+- 12 - calculating baseline predictors
+
 
 
 
