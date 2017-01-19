@@ -17,6 +17,7 @@ from sklearn.model_selection import train_test_split, KFold
 from svd import SVD
 from svdplusplus_simplified import SVDPlusPlusSimplified
 from svdplusplus import SVDPlusPlus
+from asymmetric_svd import AsymmetricSVD
 
 # TODO: currently using sorted lists, time against using dicts
 def makeArrays(start, end, animelists, id2anime, score_map=None, outfile=None):
@@ -119,9 +120,9 @@ def recommend(score_array, user_array, id2anime):
     # svd_plus2_test(train_X, test_X, id2anime)
 
     # SVD(train_X, test_X).train(id2anime)
-    SVDPlusPlusSimplified(train_X, test_X).train(id2anime)
+    # SVDPlusPlusSimplified(train_X, test_X).train(id2anime)
     # SVDPlusPlus(train_X, test_X).train(id2anime)
-
+    AsymmetricSVD(train_X, test_X).train(id2anime)
 
 
 def svd_plus2_test(train_X, test_X, id2anime):
@@ -542,7 +543,7 @@ def svd_plus2_simplified_test(train_X, test_X, id2anime):
             Yd = gamma * (e * N[u]**-.5 * Q[i])
             # else:
                 # Yd = gamma * (e * Q[i])
-            np.add(Y[Nu], Yd)
+            Y[nu] = np.add(Y[Nu], Yd)
             # for j in train_X[u].nonzero()[0]:
                 # Y[j] += gamma * (e * N[u]**-.5 * Q[i] - lmbda * Y[j])
 

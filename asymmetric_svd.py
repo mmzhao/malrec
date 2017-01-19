@@ -1,12 +1,12 @@
 import numpy as np
 from model import Model
 
-class SVDPlusPlus(Model):
+class AsymmetricSVD(Model):
     # stochastic gradient descent with weighted lambda regularisation
-    name = 'SVD++'
+    name = 'Asymmetric SVD'
 
-    def __init__(self, train_X, test_X, threshold=.5, n_epochs=100, k=20, gamma=(.007,.005,.95), lmbda=(.050,.050)):
-        super(SVDPlusPlus, self).__init__(train_X, test_X, threshold)
+    def __init__(self, train_X, test_X, threshold=.5, n_epochs=100, k=100, gamma=(.007,.005,.003,.95), lmbda=(.040,.040,.040)):
+        super(AsymmetricSVD, self).__init__(train_X, test_X, threshold)
 
         self.n_epochs = n_epochs  # Number of epochs
         self.k = k  # Dimensionality of the latent feature space
@@ -29,16 +29,23 @@ class SVDPlusPlus(Model):
         self.I2[self.I2 > 0] = 1
         self.I2[self.I2 == 0] = 0
 
-        self.g = [self.gamma[0], self.gamma[1]]  # Learning rate
+        self.g = [self.gamma[0], self.gamma[1], self.gamma[2]]  # Learning rate
 
         self.mu = np.sum(self.train_X) / len(self.user_item_pairs) # total mean of all scores
         # try initializing with dif between user/anime mean and total mean
+        self.bu = 25
+        self.bi = 25
+        self.offset = self.I * (self.train_X - self.mu)
+        self.Bu = np.sum(self.offset, axis=1) / (np.sum(self.I, axis=1) + self.bu)
+        self.offset = self.I * (self.offset - self.Bu[:, None])
+        self.Bi = np.sum(self.offset, axis=0) / (np.sum(self.I, axis=0) + self.bi)
+        self.offset = self.I * (self.offset - self.Bi)
         self.Bu = 1 * np.random.rand(self.m) # user biases
         self.Bi = 1 * np.random.rand(self.n) # anime biases
 
-        self.P = .1 * np.random.rand(self.m,self.k) # Latent user feature matrix
         self.Q = .1 * np.random.rand(self.n,self.k) # Latent movie feature matrix
-        self.Y = .1 * np.random.rand(self.n,self.k) # Implicit feedback feature matrix
+        self.W = .01 * np.random.rand(self.n,self.k) # Baseline offset similarity feature matrix
+        self.C = .01 * np.random.rand(self.n,self.k) # Implicit feedback feature matrix
 
     def SGD_step(self, u, i):
         e = self.train_X[u, i] - self.predict_single(u, i)  # Calculate error for gradient
@@ -49,23 +56,27 @@ class SVDPlusPlus(Model):
         # time1 += time.time() - cur
         # cur = time.time()
         # if N[u]:
-        self.Q[i] += self.g[1] * (e * (self.P[u] + self.N[u]**-.5 * np.dot(self.Y.T, self.I[u])) - self.lmbda[1] * self.Q[i])  # Update latent movie feature matrix
+        self.Q[i] += self.g[1] * (e * (self.N[u]**-.5 * (np.dot(self.W.T, self.offset[u]) + np.dot(self.C.T, self.I[u]))) - self.lmbda[1] * self.Q[i])
         # else:
             # Q[i] += gamma * (e * (P[u] + np.dot(Y.T, I[u])) - lmbda * Q[i])  # Update latent movie feature matrix
         # time2 += time.time() - cur
         # cur = time.time()
-        self.P[u] += self.g[1] * (e * self.Q[i] - self.lmbda[1] * self.P[u]) # Update latent user feature matrix
+        Nu = self.train_X[u].nonzero()[0] # this literally optimized runtime by 1000x
+        self.W[Nu] *= (1 - self.g[2] * self.lmbda[2])
+        # if N[u]:
+        Wd = self.g[1] * (e * self.N[u]**-.5 * self.Q[i])
+        Wd = self.offset[u][Nu][:, None] * np.tile(Wd, (len(Nu), 1))
+        # self.W[Nu] = np.add(self.W[Nu], Wd)
+        self.W[Nu] += Wd
         # time3 += time.time() - cur
         # cur = time.time()
-        Nu = self.train_X[u].nonzero()[0] # this literally optimized runtime by 1000x
-        self.Y[Nu] *= (1 - self.g[1] * self.lmbda[1])
+        # Nu = self.train_X[u].nonzero()[0] # this literally optimized runtime by 1000x
+        self.C[Nu] *= (1 - self.g[2] * self.lmbda[2])
         # if N[u]:
-        Yd = self.g[1] * (e * self.N[u]**-.5 * self.Q[i])
+        Cd = self.g[1] * (e * self.N[u]**-.5 * self.Q[i])
         # else:
             # Yd = gamma * (e * Q[i])
-        # self.Y[Nu] = np.add(self.Y[Nu], Yd)
-        Yd = np.tile(Yd, (len(Nu), 1))
-        self.Y[Nu] += Yd
+        self.C[Nu] = np.add(self.C[Nu], Cd)
 
     def get_train_test_rmse(self):
         train_rmse = self.rmse_train() # Calculate root mean squared error from train dataset
@@ -78,8 +89,9 @@ class SVDPlusPlus(Model):
         return train_error_percent, test_error_percent
 
     def update_learning_rate(self):
-        self.g[0] *= self.gamma[2]
-        self.g[1] *= self.gamma[2]
+        self.g[0] *= self.gamma[3]
+        self.g[1] *= self.gamma[3]
+        self.g[2] *= self.gamma[3]
 
     def predict_all(self):
         pred = np.zeros(self.train_X.shape)
@@ -102,7 +114,7 @@ class SVDPlusPlus(Model):
 
     def predict_single(self, u, i):
         # if N:
-        return self.mu + self.Bu[u] + self.Bi[i] + np.dot(self.Q[i], self.P[u] + self.N[u]**-.5 * np.dot(self.Y.T, self.I[u]))
+        return self.mu + self.Bu[u] + self.Bi[i] + np.dot(self.Q[i], self.N[u]**-.5 * (np.dot(self.W.T, self.offset[u]) + np.dot(self.C.T, self.I[u])))
         # return np.dot(Q, P)
 
     def rmse(self, R, ui_pairs):

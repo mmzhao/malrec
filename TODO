@@ -2,7 +2,7 @@ TODO
 - try different annealing schedule (learning rate adaptation)
 - online support for adding users to model
 - more fully capture implicit feedback by incorporating unscored but watched anime
-- learn about normalization methods
+- learn about normalization methods (https://www.cs.purdue.edu/homes/lsi/sigir04-cf-norm.pdf)
 - use k-fold cross val
 - timestamp crap for future predictabiltiy
 - consider other loss fns besides rmse
