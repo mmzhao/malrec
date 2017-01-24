@@ -1,12 +1,20 @@
 TODO
+
+PRIORITY
+- scrape more/better - contacted mal/ral people
+- try pycuda for performance increases
+- check asymmetric svd and tune params
 - try different annealing schedule (learning rate adaptation)
 - online support for adding users to model
+- make a website of sorts and perhaps contact mal people
+- write something up
+
+LATER
 - more fully capture implicit feedback by incorporating unscored but watched anime
 - learn about normalization methods (https://www.cs.purdue.edu/homes/lsi/sigir04-cf-norm.pdf)
 - use k-fold cross val
 - timestamp crap for future predictabiltiy
 - consider other loss fns besides rmse
-- scrape more/better
 - multithread
 
 STAY ON LOOKOUT FOR
@@ -42,12 +50,7 @@ DONE
 - refactor everything - based on a base model class
 
 BOOK PAGES
-- 149 - calculating baseline predictors
 - 154 - how to use rated vs seen vs plan to watch etc
-
-95-PAGE GUIDE PAGES
-- 12 - calculating baseline predictors
-
 
 
 

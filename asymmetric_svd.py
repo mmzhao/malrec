@@ -5,7 +5,7 @@ class AsymmetricSVD(Model):
     # stochastic gradient descent with weighted lambda regularisation
     name = 'Asymmetric SVD'
 
-    def __init__(self, train_X, test_X, threshold=.5, n_epochs=100, k=100, gamma=(.007,.005,.003,.95), lmbda=(.040,.040,.040)):
+    def __init__(self, train_X, test_X, threshold=.5, n_epochs=100, k=100, gamma=(.007,.007,.007,.95), lmbda=(.040,.040,.040)):
         super(AsymmetricSVD, self).__init__(train_X, test_X, threshold)
 
         self.n_epochs = n_epochs  # Number of epochs

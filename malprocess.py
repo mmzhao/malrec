@@ -121,8 +121,8 @@ def recommend(score_array, user_array, id2anime):
 
     # SVD(train_X, test_X).train(id2anime)
     # SVDPlusPlusSimplified(train_X, test_X).train(id2anime)
-    # SVDPlusPlus(train_X, test_X).train(id2anime)
-    AsymmetricSVD(train_X, test_X).train(id2anime)
+    SVDPlusPlus(train_X, test_X).train(id2anime)
+    # AsymmetricSVD(train_X, test_X).train(id2anime)
 
 
 def svd_plus2_test(train_X, test_X, id2anime):
@@ -897,6 +897,7 @@ def stats(score_array, id2anime):
 if __name__ == "__main__":
     id2anime = malscrape.getId2AnimeDictSorted()
     # single_user_pipeline("AFreakingBear", id2anime)
+    # single_user_pipeline("ploebian", id2anime)
     # exit(0)
     # animelists = malscrape.getAnimelists('user_animelists_club_10000.json')
     # score_map = [0,1,1,1,1,2,2,3,4,5,6]

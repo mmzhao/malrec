@@ -102,6 +102,15 @@ class Model(object):
         # ratings.columns = ['Actual Rating', 'Predicted Rating']
         # print ratings
 
+        print "recommended anime:"
+        pred = self.predict_all()
+        count = 0
+        for i in np.argsort(pred[0])[::-1][:len(pred[0])]:
+            count += 1
+            print id2anime.items()[i], pred[0][i]
+            if count == 100:
+                break
+
         # error_graphs = plt.figure(figsize=(20,10))
         error_graphs = plt.figure()
         plt.suptitle(title)
