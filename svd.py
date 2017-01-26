@@ -18,6 +18,12 @@ class SVD(Model):
         return title
 
     def initialize_weights(self):
+        #Only consider non-zero matrix 
+        users,items = self.train_X.nonzero()
+        users_test,items_test = self.test_X.nonzero()
+        self.user_item_pairs = zip(users,items)
+        self.user_item_pairs_test = zip(users_test,items_test)
+
         self.I = self.train_X.copy()
         self.I[self.I > 0] = 1
         self.I[self.I == 0] = 0

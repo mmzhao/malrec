@@ -17,6 +17,7 @@ from sklearn.model_selection import train_test_split, KFold
 from svd import SVD
 from svdplusplus_simplified import SVDPlusPlusSimplified
 from svdplusplus import SVDPlusPlus
+from svdplusplus_cuda import SVDPlusPlusCuda
 from asymmetric_svd import AsymmetricSVD
 
 # TODO: currently using sorted lists, time against using dicts
@@ -121,7 +122,17 @@ def recommend(score_array, user_array, id2anime):
 
     # SVD(train_X, test_X).train(id2anime)
     # SVDPlusPlusSimplified(train_X, test_X).train(id2anime)
-    SVDPlusPlus(train_X, test_X).train(id2anime)
+    # SVDPlusPlusCuda(train_X, test_X).train(id2anime)
+
+
+    # SVDPlusPlus(train_X, test_X).train(id2anime)
+    # SVDPlusPlus(train_X, test_X, in_folder="test1", out_folder="test1").train(id2anime)
+    SVDPlusPlus(train_X, test_X, in_folder=None, out_folder="real").train(id2anime)
+    # SVDPlusPlus(train_X, test_X, in_folder="test1", out_folder="test1").saved_weight_error()
+    # SVDPlusPlus(train_X, test_X, in_folder="test1", out_folder="test1").saved_weight_prediction(id2anime)
+
+
+
     # AsymmetricSVD(train_X, test_X).train(id2anime)
 
 

@@ -1,12 +1,14 @@
 import numpy as np
 from model import Model
+import time
 
 class AsymmetricSVD(Model):
     # stochastic gradient descent with weighted lambda regularisation
     name = 'Asymmetric SVD'
+    path = 'asym_svd'
 
-    def __init__(self, train_X, test_X, threshold=.5, n_epochs=100, k=100, gamma=(.007,.007,.007,.95), lmbda=(.040,.040,.040)):
-        super(AsymmetricSVD, self).__init__(train_X, test_X, threshold)
+    def __init__(self, train_X, test_X, threshold=.5, in_folder=None, out_folder=None, n_epochs=100, k=100, gamma=(.007,.007,.007,.95), lmbda=(.040,.040,.040)):
+        super(AsymmetricSVD, self).__init__(train_X, test_X, threshold, in_folder, out_folder)
 
         self.n_epochs = n_epochs  # Number of epochs
         self.k = k  # Dimensionality of the latent feature space
@@ -18,6 +20,12 @@ class AsymmetricSVD(Model):
         return title
 
     def initialize_weights(self):
+        #Only consider non-zero matrix 
+        users,items = self.train_X.nonzero()
+        users_test,items_test = self.test_X.nonzero()
+        self.user_item_pairs = zip(users,items)
+        self.user_item_pairs_test = zip(users_test,items_test)
+
         self.I = self.train_X.copy()
         self.I[self.I > 0] = 1
         self.I[self.I == 0] = 0
@@ -77,6 +85,11 @@ class AsymmetricSVD(Model):
         # else:
             # Yd = gamma * (e * Q[i])
         self.C[Nu] = np.add(self.C[Nu], Cd)
+
+    def get_train_test_both_error(self):
+        train_rmse, train_error_percent = self.both_error_train()
+        test_rmse, test_error_percent = self.both_error_test()
+        return train_rmse, test_rmse, train_error_percent, test_error_percent
 
     def get_train_test_rmse(self):
         train_rmse = self.rmse_train() # Calculate root mean squared error from train dataset
@@ -142,5 +155,19 @@ class AsymmetricSVD(Model):
     def percent_error_test(self):
         return self.percent_error(self.test_X, self.user_item_pairs_test)
 
+    def both_error(self, R, ui_pairs):
+        sq_err = 0
+        wrong = 0
+        for u, i in ui_pairs:
+            pred = self.predict_single(u, i)
+            sq_err += (R[u, i] - pred)**2
+            if abs(R[u, i] - pred) > self.threshold:
+                wrong += 1
+        return np.sqrt(sq_err/len(ui_pairs)), float(wrong)/len(ui_pairs)
 
+    def both_error_train(self):
+        return self.both_error(self.train_X, self.user_item_pairs)
+
+    def both_error_test(self):
+        return self.both_error(self.test_X, self.user_item_pairs_test)
 

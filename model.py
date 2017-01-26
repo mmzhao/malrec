@@ -5,11 +5,14 @@ import time
 class Model(object):
     # Base class for all svd with sgd based models
     name = 'Generic'
+    path = 'generic'
 
-    def __init__(self, train_X, test_X, threshold):
+    def __init__(self, train_X, test_X, threshold, in_folder=None, out_folder=None):
         self.train_X = train_X
         self.test_X = test_X
         self.threshold = threshold
+        self.in_folder = in_folder
+        self.out_folder = out_folder
 
         self.m, self.n = train_X.shape  # Number of users and items
 
@@ -40,14 +43,32 @@ class Model(object):
     def predict_single(self, u, i):
         pass
 
-    def train(self, id2anime):
-        print "Training {0} model".format(self.name)
+    def save_weights(self):
+        pass
 
-        #Only consider non-zero matrix 
-        users,items = self.train_X.nonzero()
-        users_test,items_test = self.test_X.nonzero()
-        self.user_item_pairs = zip(users,items)
-        self.user_item_pairs_test = zip(users_test,items_test)
+    def load_weights(self):
+        pass
+
+    def saved_weight_error(self):
+        self.initialize_weights()
+        train_rmse, test_rmse, train_error_percent, test_error_percent = self.get_train_test_both_error()
+        
+        print "[{0} Saved Weights]\ntrain error: {1}, test error: {2}\ntrain error percent: {3}, test error percent: {4}" \
+        .format(self.name, train_rmse, test_rmse, train_error_percent, test_error_percent)
+
+    def saved_weight_prediction(self, id2anime):
+        self.initialize_weights()
+        print "recommended anime:"
+        pred = self.predict_all()
+        count = 0
+        for i in np.argsort(pred[0])[::-1][:len(pred[0])]:
+            count += 1
+            print id2anime.items()[i], pred[0][i]
+            if count == 100:
+                break
+
+    def train(self, id2anime, load=False):
+        print "Training {0} model".format(self.name)
 
         self.initialize_weights()
 
@@ -59,14 +80,21 @@ class Model(object):
         title = self.get_title()
         print title
 
+        # TIMING
+        self.time0 = 0
+        self.time1 = 0
+        self.time2 = 0
+        self.time3 = 0
+        self.time4 = 0
+        # TIMING
+
         try:
             start_time = time.time()
 
-            train_rmse, test_rmse = self.get_train_test_rmse()
-            train_error_percent, test_error_percent = self.get_train_test_percent_error()
+            train_rmse, test_rmse, train_error_percent, test_error_percent = self.get_train_test_both_error()
             
-            print "[Epoch %d/%d, time %f]\ntrain error: %f, test error: %f\ntrain error percent: %f, test error percent: %f" \
-            %(0, self.n_epochs, time.time() - start_time, train_rmse, test_rmse, train_error_percent, test_error_percent)
+            print "[Epoch {0}/{1}, time {2}]\ntrain error: {3}, test error: {4}\ntrain error percent: {5}, test error percent: {6}" \
+            .format(0, self.n_epochs, time.time() - start_time, train_rmse, test_rmse, train_error_percent, test_error_percent)
 
             min_rmse = test_rmse
             min_error_percent = test_error_percent
@@ -78,15 +106,22 @@ class Model(object):
                     count += 1
                     if count % 100000 == 0:
                         print "count-time:{0}-{1}".format(count, time.time() - start_time)
+                        # TIMING
+                        print "    time0:{}".format(self.time0)
+                        print "    time1:{}".format(self.time1)
+                        print "    time2:{}".format(self.time2)
+                        print "    time3:{}".format(self.time3)
+                        print "    time4:{}".format(self.time4)
+                        # TIMING
                     self.SGD_step(u, i)
-                train_rmse, test_rmse = self.get_train_test_rmse()
-                train_error_percent, test_error_percent = self.get_train_test_percent_error()
+                print "calculating error-{0}".format(time.time() - start_time)
+                train_rmse, test_rmse, train_error_percent, test_error_percent = self.get_train_test_both_error()
                 train_errors.append(train_rmse)
                 test_errors.append(test_rmse)
                 train_error_percents.append(train_error_percent)
                 test_error_percents.append(test_error_percent)
-                print "[Epoch %d/%d, time %f]\ntrain error: %f, test error: %f\ntrain error percent: %f, test error percent: %f" \
-                %(epoch+1, self.n_epochs, time.time() - start_time, train_rmse, test_rmse, train_error_percent, test_error_percent)
+                print "[Epoch {0}/{1}, time {2}]\ntrain error: {3}, test error: {4}\ntrain error percent: {5}, test error percent: {6}" \
+                .format(epoch+1, self.n_epochs, time.time() - start_time, train_rmse, test_rmse, train_error_percent, test_error_percent)
                 # decrease learning rate
                 self.update_learning_rate()
 
@@ -101,6 +136,9 @@ class Model(object):
         # ratings['Prediction'] = R_hat.loc[0,R.loc[0,:] > 0]
         # ratings.columns = ['Actual Rating', 'Predicted Rating']
         # print ratings
+
+        if self.out_folder != None:
+            self.save_weights()
 
         print "recommended anime:"
         pred = self.predict_all()
