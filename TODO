@@ -2,9 +2,7 @@ TODO
 
 PRIORITY
 - scrape more/better - contacted mal/ral people
-- try pycuda for performance increases
 - check asymmetric svd and tune params
-- try different annealing schedule (learning rate adaptation)
 - online support for adding users to model
 - make a website of sorts and perhaps contact mal people
 - write something up
@@ -16,6 +14,8 @@ LATER
 - timestamp crap for future predictabiltiy
 - consider other loss fns besides rmse
 - multithread
+- try different annealing schedule (learning rate adaptation)
+- try pycuda for performance increases
 
 STAY ON LOOKOUT FOR
 - way to find more users (reddit, scraping anime reviews)

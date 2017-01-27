@@ -125,13 +125,15 @@ def recommend(score_array, user_array, id2anime):
     # SVDPlusPlusCuda(train_X, test_X).train(id2anime)
 
 
-    # SVDPlusPlus(train_X, test_X).train(id2anime)
-    # SVDPlusPlus(train_X, test_X, in_folder="test1", out_folder="test1").train(id2anime)
-    SVDPlusPlus(train_X, test_X, in_folder=None, out_folder="real").train(id2anime)
+    SVDPlusPlus(train_X, test_X).train(id2anime)
+    # SVDPlusPlus(train_X, test_X, in_folder="bear", out_folder="bear").train(id2anime)
+    # SVDPlusPlus(train_X, test_X, in_folder=None, out_folder="real75").train(id2anime)
     # SVDPlusPlus(train_X, test_X, in_folder="test1", out_folder="test1").saved_weight_error()
     # SVDPlusPlus(train_X, test_X, in_folder="test1", out_folder="test1").saved_weight_prediction(id2anime)
-
-
+    
+    # svdpp = SVDPlusPlus(train_X, test_X, in_folder="real", out_folder=None)
+    # svdpp.initialize_weights()
+    # svdpp.error_hist()
 
     # AsymmetricSVD(train_X, test_X).train(id2anime)
 
@@ -929,8 +931,11 @@ if __name__ == "__main__":
     # pleb_data = pd.DataFrame.from_csv("ploebian_low.csv", index_col=False)
     # pleb_data = pd.DataFrame.from_csv("ploebian_high.csv", index_col=False)
     pleb_array = pleb_data.values
+    bear_data = pd.DataFrame.from_csv("AFreakingBear.csv", index_col=False)
+    bear_array = bear_data.values
     # stats(score_array, id2anime)
     recommend(score_array, pleb_array, id2anime)
+    # recommend(score_array, bear_array, id2anime)
 
 
 

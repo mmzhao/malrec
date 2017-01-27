@@ -1,6 +1,7 @@
 import json
 import numpy as np
 from model import Model
+import os
 import time
 
 class SVDPlusPlus(Model):
@@ -56,6 +57,8 @@ class SVDPlusPlus(Model):
             self.Y = .1 * np.random.rand(self.n,self.k) # Implicit feedback feature matrix
 
     def save_weights(self):
+        if not os.path.exists("weights/{0}/{1}".format(self.path, self.out_folder)):
+            os.makedirs("weights/{0}/{1}".format(self.path, self.out_folder))
         model_metadata = {
             'g': self.g,
         }

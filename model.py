@@ -58,14 +58,46 @@ class Model(object):
 
     def saved_weight_prediction(self, id2anime):
         self.initialize_weights()
+        self.recommend_anime(id2anime)
+
+    def recommend_anime(self, id2anime, num_anime=100, pred=None):
         print "recommended anime:"
-        pred = self.predict_all()
+        if pred == None:
+            pred = self.predict_all()
         count = 0
         for i in np.argsort(pred[0])[::-1][:len(pred[0])]:
             count += 1
             print id2anime.items()[i], pred[0][i]
-            if count == 100:
+            if count >= num_anime:
                 break
+
+    def error_hist(self, pred=None):
+        # consider just doing this without the hist instead of using threshold since error seems to be gaussian
+        if pred == None:
+            pred = self.predict_all()
+        train_errors = pred[self.train_X > 0] - self.train_X[self.train_X > 0]
+        train_mean = np.mean(train_errors)
+        train_std = np.std(train_errors)
+        test_errors = pred[self.test_X > 0] - self.test_X[self.test_X > 0]
+        test_mean = np.mean(test_errors)
+        test_std = np.std(test_errors)
+
+        hists = plt.figure(figsize=(20,10))
+
+        train_hist = hists.add_subplot(211)
+        train_hist.hist(train_errors, bins='auto')
+        train_hist.set_title('Train Pred Error Histogram (mean={0}, std={1})'.format(train_mean, train_std))
+        train_hist.set_xlabel('Number of Scores');
+        train_hist.set_ylabel('Difference from True Score');
+
+        test_hist = hists.add_subplot(212)
+        # user_count_hist.hist(user_counts, bins=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        test_hist.hist(test_errors, bins='auto')
+        test_hist.set_title('Test Pred Error Histogram (mean={0}, std={1})'.format(test_mean, test_std))
+        test_hist.set_xlabel('Number of Scores');
+        test_hist.set_ylabel('Difference from True Score');
+
+        plt.show()
 
     def train(self, id2anime, load=False):
         print "Training {0} model".format(self.name)
@@ -140,14 +172,8 @@ class Model(object):
         if self.out_folder != None:
             self.save_weights()
 
-        print "recommended anime:"
         pred = self.predict_all()
-        count = 0
-        for i in np.argsort(pred[0])[::-1][:len(pred[0])]:
-            count += 1
-            print id2anime.items()[i], pred[0][i]
-            if count == 100:
-                break
+        self.recommend_anime(id2anime, pred=pred)
 
         # error_graphs = plt.figure(figsize=(20,10))
         error_graphs = plt.figure()
