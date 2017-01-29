@@ -75,13 +75,26 @@ def scrapeRedditUsers(posts, start, end, infile=None, outfile=None):
             # json.dump(uobj, f)
             json.dump(uobj, f, indent=2)
 
+def addUsersFromTextFile(textfile=None, infile=None, outfile=None):
+    usernames = set()
+    if infile:
+        with open(infile, 'r') as f:
+            usernames = set(json.load(f)['usernames'])
+    with open(textfile, 'r') as f:
+        users = f.readlines()
+    new_usernames = [u.split()[2] for u in users]
+    usernames |= set(new_usernames)
+    uobj = {}
+    uobj['usernames'] = list(usernames)
+    with open(outfile, 'w') as f:
+        json.dump(uobj, f, indent=2)
 
 # scrapeRedditPosts(10000, "posts_reddit.json")
 
 # posts = getRedditPosts("posts_reddit.json")
 # scrapeRedditUsers(posts, 8, 1000, "users_reddit.json", "users_reddit.json")
 
-
+# addUsersFromTextFile(textfile="user_redditanimelist.txt", infile="users_reddit.json", outfile="users_ral.json")
 
 
 

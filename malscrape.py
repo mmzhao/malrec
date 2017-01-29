@@ -6,6 +6,7 @@ import json
 import httplib
 import re
 import requests
+import signal
 import sys
 import time
 import urllib2
@@ -463,6 +464,19 @@ def scrapeAnimelistsNew(users, num_users, proxies=[None], outfile='user_animelis
     s.close()
 
 def scrapeAddAnimelistsNew(users, start, end, proxies=[None], infile='user_animelists.json', outfile='user_animelists.json', tries=3):
+    class Alarm(Exception):
+        pass
+
+    def alarm_handler(signum, frame):
+        raise Alarm
+
+    signal.signal(signal.SIGALRM, alarm_handler)
+
+    def print_proxy_info(info):
+        for i in range(len(proxies)):
+            print proxies[i], '-', info[i] 
+
+    user2animelist = {}
     with open(infile, 'r') as f:
         user2animelist = json.load(f)
     # with open(failfile, 'r') as f:
@@ -472,7 +486,10 @@ def scrapeAddAnimelistsNew(users, start, end, proxies=[None], infile='user_anime
     for i in range(len(proxies)):
         ss[i].proxies = proxies[i]
     pindex = 0
+    rotations = 0
     failed = 0
+    timeouts = [0 for _ in proxies]
+    time_spent = [0 for _ in proxies]
     start_time = time.time()
     for i in range(start, min(end, len(users))):
         if i%100 == 0 and i != start:
@@ -482,21 +499,38 @@ def scrapeAddAnimelistsNew(users, start, end, proxies=[None], infile='user_anime
             # fobj['failed_users'] = list(failed_users)
             # with open(failfile, 'w') as f:
             #     json.dump(fobj, f)
-            print "time spent:", time.time() - start_time
-            print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i, len(user2animelist), users[i])
+            print "[INFO] time spent:", time.time() - start_time
+            print "[INFO] scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i, len(user2animelist), users[i])
             # print "failed:", len(failed_users)
-            print "failed:", failed
+            print "[INFO] failed:", failed
+            print "[INFO] rotations", rotations
+            print "[INFO] timeout count: "
+            print_proxy_info(timeouts)
+            print "[INFO] time spent: "
+            print_proxy_info(time_spent)
         for _ in range(tries):
-            print i, users[i], _, proxies[pindex]
+            print "[SCRAPE] ", i, users[i], _, proxies[pindex]
             # time.sleep(.5)
             try:
+                if i - start < len(proxies):
+                    signal.alarm(20)
+                else:
+                    signal.alarm(3)
+                cur = time.time()
+
                 # res = s.get("https://myanimelist.net/malappinfo.php?u={}&status=all&type=anime".format(users[i]), proxies=proxies[pindex])
                 cur_pindex = pindex
                 pindex = (pindex + 1) % len(proxies)
+                if pindex == 0:
+                    rotations += 1
                 res = ss[cur_pindex].get("https://myanimelist.net/malappinfo.php?u={}&status=all&type=anime".format(users[i]))
                 # print "got xml"
                 if res.status_code != 200:
                     raise Exception("failed request on user:", users[i], i, "status: {0}".format(res.status_code))
+                
+                signal.alarm(0)
+                time_spent[cur_pindex] += time.time() - cur
+
                 xml = res.text
                 soup = Soup(xml, 'lxml-xml')
                 entries = soup.findAll('anime')
@@ -510,27 +544,35 @@ def scrapeAddAnimelistsNew(users, start, end, proxies=[None], infile='user_anime
                     anime2score[anime_id] = my_score
                 anime2score = OrderedDict(sorted(anime2score.items()))
                 if len(anime2score) == 0:
-                    print "empty animelist:", users[i], i
+                    print "[INFO] empty animelist:", users[i], i
                     break
                 user2animelist[users[i]] = anime2score
+                # time.sleep(.5)
                 break
             except KeyboardInterrupt:
                 print "forced termination"
                 return
             except Exception as e:
-                print "exception on user:", users[i], i, proxies[cur_pindex]
+                time_spent[cur_pindex] += time.time() - cur
+                print "[INFO] exception on user:", users[i], i, proxies[cur_pindex]
                 print e
+                timeouts[cur_pindex] += 1
                 if _ == tries - 1:
                     # failed_users.add(users[i])
-                    print "RIP IN PIECES"
+                    print "[RIP IN PIECES]"
                     failed += 1
-                time.sleep(2**(_+1))
+                # time.sleep(1)
                 continue
     with open(outfile, 'w') as f:
         json.dump(user2animelist, f)
-    print "time spent:", time.time() - start_time
-    print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
-    print "failed:", failed
+    print "[INFO] time spent:", time.time() - start_time
+    print "[INFO] scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
+    print "[INFO] failed:", failed
+    print "[INFO] rotations", rotations
+    print "[INFO] timeout count: "
+    print_proxy_info(timeouts)
+    print "[INFO] time spent: "
+    print_proxy_info(time_spent)
     s.close()
 
 def getAnimelists(infile='user_animelists.json'):
@@ -554,23 +596,58 @@ if __name__ == "__main__":
     # id2anime = getId2AnimeDictSorted()
     users = getUsers('users_club.json')
     proxies = [ 
-                # {"https": "https://216.68.76.27:80"},
-                {"https": "https://45.76.0.205:8080"},
-                {"https": "https://67.97.220.180:10000"},
-                {"https": "https://70.248.28.23:800"},
-                {"https": "https://97.77.104.22:3128"},
-                {"https": "https://108.166.171.198:80"},
-                {"https": "https://216.68.76.12:80"},
-                {"https": "https://35.164.243.195:80"},
-                None
+                {"https": "https://5.104.106.87:8080"},     # fast, no error
+                {"https": "https://37.187.100.23:3128"},    # slow, med error
+                {"https": "https://121.135.146.184:8080"},  # fast, no error
+                {"https": "https://5.249.148.184:3128"},    # slow, med error
+                {"https": "https://217.33.216.114:8080"},   # fast, no error
+                {"https": "https://51.254.221.166:3128"},   # slow, med error
+                {"https": "https://51.255.128.46:3128"},    # fast, no error
+                {"https": "https://184.49.233.234:8080"},   # slow, high error
+                {"https": "https://191.53.51.139:3128"},    # slow, med error
+                None,                                       # really fast, no error
+                # {"https": "https://200.68.27.100:3128"},
+                {"https": "https://207.154.201.156:3128"},  # slow, high error
+                # {"https": "https://196.22.241.52:8080"},    # slow, high error
+                {"https": "https://185.58.227.184:3128"},   # med, no error
+                # {"https": "https://103.14.26.150:8080"},
+                {"https": "https://70.248.28.23:800"},      # really fast, no error
+                {"https": "https://12.33.254.195:3128"},    # med, med error
+                {"https": "https://35.163.116.61:8083"},    # fast, low error
+                {"https": "https://181.41.197.200:3128"},   # slow, med error
+                # {"https": "https://103.196.182.125:28425"},
                  ]
-    # proxies = [ {"https": "https://35.164.243.195:80"}, ]
+    proxies = [ 
+                {"https": "https://5.104.106.87:8080"},     # fast, no error
+                {"https": "https://121.135.146.184:8080"},  # fast, no error
+                {"https": "https://217.33.216.114:8080"},   # fast, no error
+                {"https": "https://51.255.128.46:3128"},    # fast, no error
+                None,                                       # really fast, no error
+                {"https": "https://207.154.201.156:3128"},  # slow, high error
+                {"https": "https://185.58.227.184:3128"},   # med, no error
+                {"https": "https://70.248.28.23:800"},      # really fast, no error
+                {"https": "https://12.33.254.195:3128"},    # med, med error
+                {"https": "https://35.163.116.61:8083"},    # fast, low error
+                {"https": "https://181.41.197.200:3128"},   # slow, med error
+                 ]
+    # proxies = [ 
+    #             {"https": "https://5.104.106.87:8080"},     # fast, no error
+    #             {"https": "https://121.135.146.184:8080"},  # fast, no error
+    #             {"https": "https://217.33.216.114:8080"},   # fast, no error
+    #             {"https": "https://51.255.128.46:3128"},    # fast, no error
+    #             None,                                       # really fast, no error
+    #             {"https": "https://185.58.227.184:3128"},   # med, no error
+    #             {"https": "https://70.248.28.23:800"},      # really fast, no error
+    #             {"https": "https://12.33.254.195:3128"},    # med, med error
+    #             {"https": "https://35.163.116.61:8083"},    # fast, low error
+    #              ]
+    # proxies = [ {"https": "https://151.80.88.44:3128"}, ]
 
 
     # print len(users)
 
-    scrapeAnimelistsNew(['Ploebian'], 1, outfile="ploebian_animelist.json")
-    # scrapeAddAnimelistsNew(users, 41200, 100000, proxies=proxies, infile='user_animelists_club_first_half.json', outfile='user_animelists_club_first_half.json')
+    # scrapeAnimelistsNew(['Ploebian'], 1, outfile="ploebian_animelist.json")
+    # scrapeAddAnimelistsNew(users, 90000, 100000, proxies=proxies, infile='user_animelists_club_first_half.json', outfile='user_animelists_club_first_half.json')
     # scrapeAddAnimelistsNew(users, 109900, 200000, proxies=proxies, infile='user_animelists_club_second_half.json', outfile='user_animelists_club_second_half.json')
     # scrapeAddAnimelistsSoup(users, 41200, 100000, infile='user_animelists_club_first_half.json', outfile='user_animelists_club_first_half.json')
     # scrapeAddAnimelistsSoup(users, 109900, 200000, infile='user_animelists_club_second_half.json', outfile='user_animelists_club_second_half.json')
@@ -581,3 +658,16 @@ if __name__ == "__main__":
 
 
 
+def split_animelists(infile, outfiles):
+    animelists = getAnimelists(infile)
+    users = animelists.keys()
+    # print len(users)
+    splits = [{} for _ in range(len(outfiles))]
+    for i in range(len(users)):
+        splits[i % len(outfiles)][users[i]] = animelists[users[i]]
+    for i in range(len(outfiles)):
+        # print len(splits[i].keys())
+        with open(outfiles[i], 'w') as f:
+            json.dump(splits[i], f)
+
+split_animelists('user_animelists_club_first_half.json', ['user_animelists_club_1.json', 'user_animelists_club_2.json'])
