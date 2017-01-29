@@ -573,14 +573,31 @@ def scrapeAddAnimelistsNew(users, start, end, proxies=[None], infile='user_anime
     print_proxy_info(timeouts)
     print "[INFO] time spent: "
     print_proxy_info(time_spent)
-    s.close()
 
 def getAnimelists(infile='user_animelists.json'):
     with open(infile, 'r') as f:
         user2animelist = json.load(f)
     return user2animelist
 
+def split_animelists(infile, outfiles):
+    animelists = getAnimelists(infile)
+    users = animelists.keys()
+    # print len(users)
+    splits = [{} for _ in range(len(outfiles))]
+    for i in range(len(users)):
+        splits[i % len(outfiles)][users[i]] = animelists[users[i]]
+    for i in range(len(outfiles)):
+        # print len(splits[i].keys())
+        with open(outfiles[i], 'w') as f:
+            json.dump(splits[i], f)
 
+def merge_animelists(infiles, outfile):
+    merged = {}
+    for f in infiles:
+        animelists = getAnimelists(f)
+        merged.update(animelists)
+    with open(outfile, 'w') as f:
+        json.dump(merged, f)
 
 
 
@@ -654,20 +671,12 @@ if __name__ == "__main__":
     # cProfile.run('scrapeAddAnimelistsNew(users, 100200, 100300, proxies=proxies, infile="user_animelists_club_10000.json", outfile="user_animelists_club_second_half.json")', sort='tottime')
     # cProfile.run('scrapeAddAnimelistsSoup(users, 100200, 100300, infile="user_animelists_club_10000.json", outfile="user_animelists_club_second_half.json")', sort='tottime')
 
+    # split_animelists('user_animelists_club_first_half.json', ['user_animelists_club_1.json', 'user_animelists_club_2.json'])
+    # split_animelists('user_animelists_club_second_half.json', ['user_animelists_club_3.json', 'user_animelists_club_4.json'])
+    merge_animelists(['user_animelists_club_1.json', 'user_animelists_club_2.json', 'user_animelists_club_3.json', 'user_animelists_club_4.json'], 'user_animelists_club.json')
 
 
 
 
-def split_animelists(infile, outfiles):
-    animelists = getAnimelists(infile)
-    users = animelists.keys()
-    # print len(users)
-    splits = [{} for _ in range(len(outfiles))]
-    for i in range(len(users)):
-        splits[i % len(outfiles)][users[i]] = animelists[users[i]]
-    for i in range(len(outfiles)):
-        # print len(splits[i].keys())
-        with open(outfiles[i], 'w') as f:
-            json.dump(splits[i], f)
 
-split_animelists('user_animelists_club_first_half.json', ['user_animelists_club_1.json', 'user_animelists_club_2.json'])
+
