@@ -1,6 +1,7 @@
 TODO
 
 PRIORITY
+- refactor round 2
 - check asymmetric svd and tune params
 - online support for adding users to model
 - make a website of sorts and perhaps contact mal people
@@ -51,6 +52,7 @@ DONE
 - save models after run
 - scrape more/better - contacted mal/ral people, scraped 200k
 - scraped more posts/users from reddit using their cloudsearch syntax
+- save ordering of users when converting lists to csv arrays
 
 BOOK PAGES
 - 154 - how to use rated vs seen vs plan to watch etc

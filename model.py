@@ -62,12 +62,12 @@ class Model(object):
 
     def recommend_anime(self, id2anime, num_anime=100, pred=None):
         print "recommended anime:"
-        if pred == None:
+        if pred is None:
             pred = self.predict_all()
         count = 0
-        for i in np.argsort(pred[0])[::-1][:len(pred[0])]:
+        for i in np.argsort(pred[-1])[::-1][:len(pred[-1])]:
             count += 1
-            print id2anime.items()[i], pred[0][i]
+            print id2anime.items()[i], pred[-1][i]
             if count >= num_anime:
                 break
 
