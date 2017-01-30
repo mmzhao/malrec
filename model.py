@@ -61,7 +61,7 @@ class Model(object):
         self.recommend_anime(id2anime)
 
     def recommend_anime(self, id2anime, num_anime=100, pred=None):
-        print "recommended anime:"
+        print "[INFO] recommended anime:"
         if pred is None:
             pred = self.predict_all()
         count = 0
@@ -174,6 +174,7 @@ class Model(object):
 
         pred = self.predict_all()
         self.recommend_anime(id2anime, pred=pred)
+        print "[INFO] time spent: {}".format(time.time() - start_time)
 
         # error_graphs = plt.figure(figsize=(20,10))
         error_graphs = plt.figure()

@@ -29,11 +29,12 @@ PROCESSED_DATA_FOLDER = 'processed_data'
 def makeArrays(start, end, animelists, id2anime, score_map=None, outfolder=None):
     if score_map == None:
         score_map = [i for i in range(11)]
-    score_array = None
     users = animelists.keys()
     score_count = 0
     unused_lists = 0
     all_anime_sorted = id2anime.keys()
+    # score_array = None
+    score_array = np.empty((end - start, len(all_anime_sorted)))
     actual_users = []
     user_to_row = {}
     start_time = time.time()
@@ -45,6 +46,7 @@ def makeArrays(start, end, animelists, id2anime, score_map=None, outfolder=None)
         anime2score = {int(k):v for k,v in anime2score.items()}
         user_anime_sorted = anime2score.keys()
         user_anime_sorted.sort()
+        # print user_anime_sorted
         full_scores = []
         user_index = 0
         all_index = 0
@@ -59,7 +61,7 @@ def makeArrays(start, end, animelists, id2anime, score_map=None, outfolder=None)
                 if full_scores[-1]:
                     scores_1000 += 1
             elif user_anime_sorted[user_index] not in all_anime_sorted:
-                # print 'anime not in top 1000 most popular:', user_anime_sorted[user_index] #, id2anime[user_anime_sorted[user_index]]
+                # print 'anime not in top 1000 most popular:', user_anime_sorted[user_index]#, id2anime[user_anime_sorted[user_index]]
                 user_index += 1
             else: # user_anime_sorted[user_index] > all_anime_sorted[all_index]:
                 full_scores += [0]
@@ -69,16 +71,15 @@ def makeArrays(start, end, animelists, id2anime, score_map=None, outfolder=None)
         if scores_1000 == 0:
             unused_lists += 1
             continue
-            # print "list unused:", users[i], i
-        elif score_array is not None:
-            score_array = np.append(score_array, [full_scores], axis=0)
-        else:
-            score_array = np.array([full_scores])
+            # print "list unused:", users[i], i      
+        score_array[len(actual_users)] = full_scores
         # print 'scores in top 1000 most popular:', scores_1000
         # print score_array.shape
         user_to_row[users[i]] = len(actual_users)
         actual_users += [users[i]]
         score_count += scores_1000
+    score_array = score_array[:len(actual_users)]
+    # print score_array.shape
     print 'total time to make array:', time.time() - start_time
     print 'lists converted to array:', min(end, len(users)) - start - unused_lists
     print 'unused lists:', unused_lists
@@ -145,9 +146,10 @@ def recommend(score_array, user_array, id2anime):
     # SVDPlusPlusCuda(train_X, test_X).train(id2anime)
 
 
-    SVDPlusPlus(train_X, test_X).train(id2anime)
+    # SVDPlusPlus(train_X, test_X).train(id2anime)
     # SVDPlusPlus(train_X, test_X, in_folder="bear", out_folder="bear").train(id2anime)
     # SVDPlusPlus(train_X, test_X, in_folder=None, out_folder="real75").train(id2anime)
+    SVDPlusPlus(train_X, test_X, in_folder=None, out_folder="100k_users").train(id2anime)
     # SVDPlusPlus(train_X, test_X, in_folder="test1", out_folder="test1").saved_weight_error()
     # SVDPlusPlus(train_X, test_X, in_folder="test1", out_folder="test1").saved_weight_prediction(id2anime)
     
@@ -225,8 +227,8 @@ def stats(score_array, id2anime):
     # for i in range(len(user_counts)):
         # print id2anime.items()[i], user_counts[i]
     user_count_hist = hists.add_subplot(212)
-    # user_count_hist.hist(user_counts, bins=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     user_count_hist.hist(user_counts, bins='auto')
+    # user_count_hist.hist(user_counts, bins=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     user_count_hist.set_title('User Score Count Histogram')
     user_count_hist.set_xlabel('Number of Scores');
     user_count_hist.set_ylabel('Number of Users');
@@ -239,13 +241,18 @@ if __name__ == "__main__":
     # single_user_pipeline("ploebian", id2anime)
     # exit(0)
 
-    # animelists = malscrape.getAnimelists('user_animelists_club.json')
-    # animelists = malscrape.getAnimelists('user_animelists_club_10000.json')
+    # animelists = malscrape.getAnimelists('animelists_club.json')
+    # animelists = malscrape.getAnimelists('animelists_club_10000.json')
+    # exit(0)
 
+    # makeArrays(0, 10000, animelists, id2anime, outfolder='anime_1000_club_10000')
     # makeArrays(0, 100000, animelists, id2anime, outfolder='anime_1000_club_100000')
     # makeArrays(0, 200000, animelists, id2anime, outfolder='anime_1000_club_200000')
-    
-    score_data = pd.DataFrame.from_csv(PROCESSED_DATA_FOLDER + "/anime_1000_club_10000/scores.csv", index_col=False)
+    # exit(0)
+
+    # score_data = pd.DataFrame.from_csv(PROCESSED_DATA_FOLDER + "/anime_1000_club_10000/scores.csv", index_col=False)
+    score_data = pd.DataFrame.from_csv(PROCESSED_DATA_FOLDER + "/anime_1000_club_100000/scores.csv", index_col=False)
+    # score_data = pd.DataFrame.from_csv(PROCESSED_DATA_FOLDER + "/anime_1000_club_200000/scores.csv", index_col=False)
     score_array = score_data.values
     pleb_data = pd.DataFrame.from_csv(PROCESSED_DATA_FOLDER + "/ploebian/scores.csv", index_col=False)
     pleb_array = pleb_data.values

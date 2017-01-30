@@ -11,6 +11,11 @@ import sys
 import time
 import urllib2
 
+ANIMES_LISTS_FOLDER = 'animes_lists'
+CLUBS_LISTS_FOLDER = 'clubs_lists'
+USERS_LISTS_FOLDER = 'users_lists'
+ANIMELISTS_LISTS_FOLDER = 'animelists_lists'
+
 def scrapeId2AnimeDict(num_anime, outfile='animes_sorted.json'):
     id2anime = OrderedDict()
     for i in range(num_anime//50):
@@ -30,19 +35,19 @@ def scrapeId2AnimeDict(num_anime, outfile='animes_sorted.json'):
     #     json.dump(id2anime, f, indent=2)
 
     # id2anime = {int(k):v for k,v in id2anime.items()}
-    with open(oufile, 'w') as f:
+    with open("{}/{}".format(ANIMES_LISTS_FOLDER, outfile), 'w') as f:
         # json.dump(id2anime, f)
         json.dump(OrderedDict(sorted(id2anime.items())), f, indent=2)
 
 # isn't sorted when loaded from JSON
 def getId2AnimeDictSorted(infile='animes_sorted.json'):
-    with open(infile, 'r') as f:
+    with open("{}/{}".format(ANIMES_LISTS_FOLDER, infile), 'r') as f:
         id2anime = json.load(f, object_pairs_hook=OrderedDict)
     id2anime = {int(k):v for k,v in id2anime.items()}
     return OrderedDict(sorted(id2anime.items()))
 
 def getId2AnimeDictUnsorted(infile='animes_unsorted.json'):
-    with open(infile, 'r') as f:
+    with open("{}/{}".format(ANIMES_LISTS_FOLDER, infile), 'r') as f:
         id2anime = json.load(f, object_pairs_hook=OrderedDict)
     return id2anime
 
@@ -61,12 +66,12 @@ def scrapeClubs(num_clubs, outfile='clubs.json'):
             cid = club.split("\"")[0].split('=')[1]
             members = int(club.split("\n")[-1].replace(',', ''))
             cid2memmbers[cid] = members
-    with open(outfile, 'w') as f:
+    with open("{}/{}".format(CLUBS_LISTS_FOLDER, outfile), 'w') as f:
         # json.dump(cid2memmbers, f)
         json.dump(cid2memmbers, f, indent=2)
 
 def getClubs(infile='clubs.json'):
-    with open(infile, 'r') as f:
+    with open("{}/{}".format(CLUBS_LISTS_FOLDER, infile), 'r') as f:
         clubs = json.load(f, object_pairs_hook=OrderedDict)
     return clubs
 
@@ -89,7 +94,7 @@ def scrapeUsers(clubs, num_clubs, outfile='users.json'):
             print len(usernames)
         uobj = {}
         uobj['usernames'] = list(usernames)
-        with open(outfile, 'w') as f:
+        with open("{}/{}".format(USERS_LISTS_FOLDER, outfile), 'w') as f:
             # json.dump(uobj, f)
             json.dump(uobj, f, indent=2)
     # usernames = list(usernames)
@@ -100,7 +105,7 @@ def scrapeUsers(clubs, num_clubs, outfile='users.json'):
     #     json.dump(uobj, f, indent=2)
 
 def scrapeAddUsers(clubs, start, end, infile='users.json', outfile='users.json'):
-    with open(infile, 'r') as f:
+    with open("{}/{}".format(USERS_LISTS_FOLDER, infile), 'r') as f:
         usernames = set(json.load(f)['usernames'])
     cids = clubs.keys()
     for i in range(start, min(end, len(cids))):
@@ -119,13 +124,13 @@ def scrapeAddUsers(clubs, start, end, infile='users.json', outfile='users.json')
             print j, "out of", clubs[cids[i]]//36, ":", len(usernames)
         uobj = {}
         uobj['usernames'] = list(usernames)
-        with open(outfile, 'w') as f:
+        with open("{}/{}".format(USERS_LISTS_FOLDER, outfile), 'w') as f:
             # json.dump(uobj, f)
             json.dump(uobj, f, indent=2)
         print "done scraping", cids[i]
 
 def getUsers(infile='users.json'):
-    with open(infile, 'r') as f:
+    with open("{}/{}".format(USERS_LISTS_FOLDER, infile), 'r') as f:
         users = json.load(f)['usernames']
     return users
 
@@ -172,16 +177,16 @@ def scrapeAnimelists(users, num_users, outfile='user_animelists.json'):
         # print len(scores)
         user2animelist[users[i]] = anime2score
         if (i + 1)%100 == 0:
-            with open(outfile, 'w') as f:
+            with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
                 json.dump(user2animelist, f)
             print "time spent:", time.time() - start
             print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
-    with open(outfile, 'w') as f:
+    with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
         json.dump(user2animelist, f)
         # json.dump(user2animelist, f, indent=2)
 
 def scrapeAddAnimelists(users, start, end, infile='user_animelists.json', outfile='user_animelists.json'):
-    with open(infile, 'r') as f:
+    with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, infile), 'r') as f:
         user2animelist = json.load(f)
     start_time = time.time()
     for i in range(start, min(end, len(users))):
@@ -214,11 +219,11 @@ def scrapeAddAnimelists(users, start, end, infile='user_animelists.json', outfil
         # print len(scores)
         user2animelist[users[i]] = anime2score
         if (i + 1)%100 == 0:
-            with open(outfile, 'w') as f:
+            with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
                 json.dump(user2animelist, f)
             print "time spent:", time.time() - start_time
             print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
-    with open(outfile, 'w') as f:
+    with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
         json.dump(user2animelist, f)
         # json.dump(user2animelist, f, indent=2)
 
@@ -252,17 +257,17 @@ def scrapeAnimelistsPersistant(users, num_users, outfile='user_animelists.json')
         # print len(scores)
         user2animelist[users[i]] = anime2score
         if (i + 1)%100 == 0:
-            with open(outfile, 'w') as f:
+            with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
                 json.dump(user2animelist, f)
             print "time spent:", time.time() - start
             print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
-    with open(outfile, 'w') as f:
+    with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
         json.dump(user2animelist, f)
     conn.close()
         # json.dump(user2animelist, f, indent=2)
 
 def scrapeAddAnimelistsPersistant(users, start, end, infile='user_animelists.json', outfile='user_animelists.json'):
-    with open(infile, 'r') as f:
+    with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, infile), 'r') as f:
         user2animelist = json.load(f)
     conn = httplib.HTTPSConnection("myanimelist.net")
     start_time = time.time()
@@ -295,11 +300,11 @@ def scrapeAddAnimelistsPersistant(users, start, end, infile='user_animelists.jso
         # print len(scores)
         user2animelist[users[i]] = anime2score
         if (i + 1)%100 == 0:
-            with open(outfile, 'w') as f:
+            with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
                 json.dump(user2animelist, f)
             print "time spent:", time.time() - start_time
             print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
-    with open(outfile, 'w') as f:
+    with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
         json.dump(user2animelist, f)
         # json.dump(user2animelist, f, indent=2)
     conn.close()
@@ -333,7 +338,7 @@ def scrapeAnimelistsSoup(users, num_users, outfile='user_animelists.json'):
                 continue
             user2animelist[users[i]] = anime2score
             if (i + 1)%100 == 0:
-                with open(outfile, 'w') as f:
+                with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
                     json.dump(user2animelist, f)
                 print "time spent:", time.time() - start
                 print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
@@ -342,18 +347,18 @@ def scrapeAnimelistsSoup(users, num_users, outfile='user_animelists.json'):
             return
         except:
             print "exception on user:", users[i], i
-    with open(outfile, 'w') as f:
+    with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
         json.dump(user2animelist, f)
     conn.close()
 
 def scrapeAddAnimelistsSoup(users, start, end, infile='user_animelists.json', outfile='user_animelists.json'):
-    with open(infile, 'r') as f:
+    with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, infile), 'r') as f:
         user2animelist = json.load(f)
     conn = httplib.HTTPSConnection("myanimelist.net")
     start_time = time.time()
     for i in range(start, min(end, len(users))):
         if i%100 == 0 and i != start:
-            with open(outfile, 'w') as f:
+            with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
                 json.dump(user2animelist, f)
             print "time spent:", time.time() - start_time
             print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
@@ -387,7 +392,7 @@ def scrapeAddAnimelistsSoup(users, start, end, infile='user_animelists.json', ou
             return
         except:
             print "exception on user:", users[i], i
-    with open(outfile, 'w') as f:
+    with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
         json.dump(user2animelist, f)
     conn.close()
 
@@ -406,7 +411,7 @@ def scrapeAnimelistsNew(users, num_users, proxies=[None], outfile='user_animelis
     start_time = time.time()
     for i in range(min(num_users, len(users))):
         if i%100 == 0 and i != 0:
-            with open(outfile, 'w') as f:
+            with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
                 json.dump(user2animelist, f)
             # fobj = {}
             # fobj['failed_users'] = list(failed_users)
@@ -456,7 +461,7 @@ def scrapeAnimelistsNew(users, num_users, proxies=[None], outfile='user_animelis
                     failed += 1
                 time.sleep(2**(_+1))
                 continue
-    with open(outfile, 'w') as f:
+    with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
         json.dump(user2animelist, f)
     print "time spent:", time.time() - start_time
     print "scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
@@ -477,7 +482,7 @@ def scrapeAddAnimelistsNew(users, start, end, proxies=[None], infile='user_anime
             print proxies[i], '-', info[i] 
 
     user2animelist = {}
-    with open(infile, 'r') as f:
+    with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, infile), 'r') as f:
         user2animelist = json.load(f)
     # with open(failfile, 'r') as f:
     #     failed_users = set(json.load(f)['failed_users'])
@@ -493,7 +498,7 @@ def scrapeAddAnimelistsNew(users, start, end, proxies=[None], infile='user_anime
     start_time = time.time()
     for i in range(start, min(end, len(users))):
         if i%100 == 0 and i != start:
-            with open(outfile, 'w') as f:
+            with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
                 json.dump(user2animelist, f)
             # fobj = {}
             # fobj['failed_users'] = list(failed_users)
@@ -563,7 +568,7 @@ def scrapeAddAnimelistsNew(users, start, end, proxies=[None], infile='user_anime
                     failed += 1
                 # time.sleep(1)
                 continue
-    with open(outfile, 'w') as f:
+    with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
         json.dump(user2animelist, f)
     print "[INFO] time spent:", time.time() - start_time
     print "[INFO] scraped {0} users, {1} non-empty animelists, ending with: {2}".format(i + 1, len(user2animelist), users[i])
@@ -574,8 +579,8 @@ def scrapeAddAnimelistsNew(users, start, end, proxies=[None], infile='user_anime
     print "[INFO] time spent: "
     print_proxy_info(time_spent)
 
-def getAnimelists(infile='user_animelists.json'):
-    with open(infile, 'r') as f:
+def getAnimelists(infile='animelists.json'):
+    with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, infile), 'r') as f:
         user2animelist = json.load(f)
     return user2animelist
 
@@ -588,7 +593,7 @@ def split_animelists(infile, outfiles):
         splits[i % len(outfiles)][users[i]] = animelists[users[i]]
     for i in range(len(outfiles)):
         # print len(splits[i].keys())
-        with open(outfiles[i], 'w') as f:
+        with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfiles[i]), 'w') as f:
             json.dump(splits[i], f)
 
 def merge_animelists(infiles, outfile):
@@ -596,7 +601,7 @@ def merge_animelists(infiles, outfile):
     for f in infiles:
         animelists = getAnimelists(f)
         merged.update(animelists)
-    with open(outfile, 'w') as f:
+    with open("{}/{}".format(ANIMELISTS_LISTS_FOLDER, outfile), 'w') as f:
         json.dump(merged, f)
 
 
@@ -664,16 +669,16 @@ if __name__ == "__main__":
     # print len(users)
 
     # scrapeAnimelistsNew(['Ploebian'], 1, outfile="ploebian_animelist.json")
-    # scrapeAddAnimelistsNew(users, 90000, 100000, proxies=proxies, infile='user_animelists_club_first_half.json', outfile='user_animelists_club_first_half.json')
-    # scrapeAddAnimelistsNew(users, 109900, 200000, proxies=proxies, infile='user_animelists_club_second_half.json', outfile='user_animelists_club_second_half.json')
-    # scrapeAddAnimelistsSoup(users, 41200, 100000, infile='user_animelists_club_first_half.json', outfile='user_animelists_club_first_half.json')
-    # scrapeAddAnimelistsSoup(users, 109900, 200000, infile='user_animelists_club_second_half.json', outfile='user_animelists_club_second_half.json')
-    # cProfile.run('scrapeAddAnimelistsNew(users, 100200, 100300, proxies=proxies, infile="user_animelists_club_10000.json", outfile="user_animelists_club_second_half.json")', sort='tottime')
-    # cProfile.run('scrapeAddAnimelistsSoup(users, 100200, 100300, infile="user_animelists_club_10000.json", outfile="user_animelists_club_second_half.json")', sort='tottime')
+    # scrapeAddAnimelistsNew(users, 90000, 100000, proxies=proxies, infile='animelists_club_first_half.json', outfile='animelists_club_first_half.json')
+    # scrapeAddAnimelistsNew(users, 109900, 200000, proxies=proxies, infile='animelists_club_second_half.json', outfile='animelists_club_second_half.json')
+    # scrapeAddAnimelistsSoup(users, 41200, 100000, infile='animelists_club_first_half.json', outfile='animelists_club_first_half.json')
+    # scrapeAddAnimelistsSoup(users, 109900, 200000, infile='animelists_club_second_half.json', outfile='animelists_club_second_half.json')
+    # cProfile.run('scrapeAddAnimelistsNew(users, 100200, 100300, proxies=proxies, infile="animelists_club_10000.json", outfile="animelists_club_second_half.json")', sort='tottime')
+    # cProfile.run('scrapeAddAnimelistsSoup(users, 100200, 100300, infile="animelists_club_10000.json", outfile="animelists_club_second_half.json")', sort='tottime')
 
-    # split_animelists('user_animelists_club_first_half.json', ['user_animelists_club_1.json', 'user_animelists_club_2.json'])
-    # split_animelists('user_animelists_club_second_half.json', ['user_animelists_club_3.json', 'user_animelists_club_4.json'])
-    merge_animelists(['user_animelists_club_1.json', 'user_animelists_club_2.json', 'user_animelists_club_3.json', 'user_animelists_club_4.json'], 'user_animelists_club.json')
+    # split_animelists('animelists_club_first_half.json', ['animelists_club_1.json', 'animelists_club_2.json'])
+    # split_animelists('animelists_club_second_half.json', ['animelists_club_3.json', 'animelists_club_4.json'])
+    merge_animelists(['animelists_club_1.json', 'animelists_club_2.json', 'animelists_club_3.json', 'animelists_club_4.json'], 'user_animelists_club.json')
 
 
 

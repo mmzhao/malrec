@@ -5,6 +5,9 @@ import time
 
 pw = 'mrfrog273'
 
+USERS_LISTS_FOLDER = 'users_lists'
+POSTS_LISTS_FOLDER = 'posts_reddit_lists'
+
 def scrapeRedditPosts(num_posts, outfile=None):
     r = praw.Reddit(client_id='XwuetZy7Y3LMIQ',
                 client_secret='zCB2xjAEBB4Mufq6ObxURmzGMiU',
@@ -29,18 +32,18 @@ def scrapeRedditPosts(num_posts, outfile=None):
         print pids[-1]
     pobj = {}
     pobj['posts'] = pids
-    with open(outfile, 'w') as f:
+    with open("{}/{}".format(POSTS_LISTS_FOLDER, outfile), 'w') as f:
         json.dump(pobj, f, indent=2)
 
 def getRedditPosts(infile="None"):
-    with open(infile, 'r') as f:
+    with open("{}/{}".format(POSTS_LISTS_FOLDER, infile), 'r') as f:
         posts = json.load(f)['posts']
     return posts
 
 def scrapeRedditUsers(posts, start, end, infile=None, outfile=None):
     usernames = set()
     if infile:
-        with open(infile, 'r') as f:
+        with open("{}/{}".format(USERS_LISTS_FOLDER, infile), 'r') as f:
             usernames = set(json.load(f)['usernames'])
     r = praw.Reddit(client_id='XwuetZy7Y3LMIQ',
                 client_secret='zCB2xjAEBB4Mufq6ObxURmzGMiU',
@@ -61,7 +64,7 @@ def scrapeRedditUsers(posts, start, end, infile=None, outfile=None):
             print "[INFO] usernames scraped:", len(usernames)
             uobj = {}
             uobj['usernames'] = list(usernames)
-            with open(outfile, 'w') as f:
+            with open("{}/{}".format(USERS_LISTS_FOLDER, outfile), 'w') as f:
                 json.dump(uobj, f, indent=2)
             print '[INFO] saved post ids'
         for _ in range(tries):
@@ -99,7 +102,7 @@ def scrapeRedditUsers(posts, start, end, infile=None, outfile=None):
                 print "[INFO] usernames scraped:", len(usernames)
                 uobj = {}
                 uobj['usernames'] = list(usernames)
-                with open(outfile, 'w') as f:
+                with open("{}/{}".format(USERS_LISTS_FOLDER, outfile), 'w') as f:
                     # json.dump(uobj, f)
                     json.dump(uobj, f, indent=2)
                 print '[INFO] saved post ids'
@@ -111,7 +114,7 @@ def scrapeRedditUsers(posts, start, end, infile=None, outfile=None):
     print "[INFO] usernames scraped:", len(usernames)
     uobj = {}
     uobj['usernames'] = list(usernames)
-    with open(outfile, 'w') as f:
+    with open("{}/{}".format(USERS_LISTS_FOLDER, outfile), 'w') as f:
         # json.dump(uobj, f)
         json.dump(uobj, f, indent=2)
     print '[INFO] saved post ids'
@@ -119,7 +122,7 @@ def scrapeRedditUsers(posts, start, end, infile=None, outfile=None):
 def addUsersFromTextFile(textfile=None, infile=None, outfile=None):
     usernames = set()
     if infile:
-        with open(infile, 'r') as f:
+        with open("{}/{}".format(USERS_LISTS_FOLDER, infile), 'r') as f:
             usernames = set(json.load(f)['usernames'])
     with open(textfile, 'r') as f:
         users = f.readlines()
@@ -127,7 +130,7 @@ def addUsersFromTextFile(textfile=None, infile=None, outfile=None):
     usernames |= set(new_usernames)
     uobj = {}
     uobj['usernames'] = list(usernames)
-    with open(outfile, 'w') as f:
+    with open("{}/{}".format(USERS_LISTS_FOLDER, outfile), 'w') as f:
         json.dump(uobj, f, indent=2)
 
 def scrapeRedditPostsCloudSearch(start=None, end=None, infile=None, outfile=None):
@@ -175,7 +178,7 @@ def scrapeRedditPostsCloudSearch(start=None, end=None, infile=None, outfile=None
             print '[ERROR] ', e
     pobj = {}
     pobj['posts'] = pids
-    with open(outfile, 'w') as f:
+    with open("{}/{}".format(POSTS_LISTS_FOLDER, outfile), 'w') as f:
         json.dump(pobj, f, indent=2)
     print '[INFO] saved post ids'
 

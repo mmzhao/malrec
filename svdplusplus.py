@@ -9,7 +9,7 @@ class SVDPlusPlus(Model):
     name = 'SVD++'
     path = 'svdpp'
 
-    def __init__(self, train_X, test_X, threshold=.5, in_folder=None, out_folder=None, n_epochs=100, k=20, gamma=(.007,.005,.95), lmbda=(.050,.050)):
+    def __init__(self, train_X, test_X, threshold=1.0, in_folder=None, out_folder='default', n_epochs=100, k=20, gamma=(.007,.005,.95), lmbda=(.050,.050)):
         super(SVDPlusPlus, self).__init__(train_X, test_X, threshold, in_folder, out_folder)
 
         self.n_epochs = n_epochs  # Number of epochs
